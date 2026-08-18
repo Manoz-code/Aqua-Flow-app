@@ -76,14 +76,24 @@ function Deliveries({
      ======================================================= */
 
   useEffect(() => {
-    if (!showForm) return;
+  if (!showForm) {
+    return undefined;
+  }
 
+  const timer = setTimeout(() => {
     formRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
-  }, [showForm, editingId]);
+  }, 100);
 
+  return () => clearTimeout(timer);
+}, [
+  showForm,
+  editingId,
+  prefillCustomerId,
+  openFormSignal,
+]);
   /* =======================================================
      RESET FORM
      -------------------------------------------------------

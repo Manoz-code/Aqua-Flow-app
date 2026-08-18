@@ -198,23 +198,27 @@ export default function App() {
      CUSTOMER CRUD
      ========================================================= */
 
-  const addCustomer = useCallback((customer) => {
-    setData((current) => ({
-      ...current,
+const addCustomer = useCallback((customer) => {
+  const customerId = createId("customer_");
 
-      customers: [
-        ...current.customers,
+  setData((current) => ({
+    ...current,
 
-        {
-          ...customer,
-          id: createId("customer_"),
-          previousBalance:
-            Number(customer.previousBalance) || 0,
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    }));
-  }, []);
+    customers: [
+      ...current.customers,
+
+      {
+        ...customer,
+        id: customerId,
+        previousBalance:
+          Number(customer.previousBalance) || 0,
+        createdAt: new Date().toISOString(),
+      },
+    ],
+  }));
+
+  return customerId;
+}, []);
 
   const updateCustomer = useCallback((id, updates) => {
     setData((current) => ({

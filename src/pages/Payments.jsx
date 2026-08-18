@@ -88,13 +88,17 @@ function Payments({
        → focus amount
      ======================================================= */
 
- useEffect(() => {
-  if (!showForm) return;
+useEffect(() => {
+  if (!showForm) {
+    return undefined;
+  }
 
-  formRef.current?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
+  const scrollTimer = setTimeout(() => {
+    formRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 100);
 
   const focusTimer = setTimeout(() => {
     if (form.customerId) {
@@ -103,10 +107,17 @@ function Payments({
     } else {
       customerPickerRef.current?.focus();
     }
-  }, 100);
+  }, 200);
 
-  return () => clearTimeout(focusTimer);
-}, [showForm, openFormSignal, form.customerId]);
+  return () => {
+    clearTimeout(scrollTimer);
+    clearTimeout(focusTimer);
+  };
+}, [
+  showForm,
+  openFormSignal,
+  form.customerId,
+]);
   /* =======================================================
      RESET FORM
      
