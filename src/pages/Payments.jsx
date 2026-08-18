@@ -10,6 +10,7 @@ import {
 import {
   formatMoney,
   formatNumber,
+  formatNepaliDate,
   getInitials,
   today,
 } from "../utils/format";
@@ -22,6 +23,7 @@ import {
 } from "../utils/data";
 
 import CustomerPicker from "../components/CustomerPicker";
+import NepaliDateInput from "../components/NepaliDateInput";
 
 /* =========================================================
    PAYMENTS
@@ -524,10 +526,11 @@ function Payments({
                   </h3>
 
                   <div className="customer-details">
-                    <span>
+                   <span>
                       📅{" "}
-                      {item.delivery.date ||
-                        "No date"}
+                      {item.delivery.date
+                        ? formatNepaliDate(item.delivery.date)
+                        : "No date"}
                     </span>
 
                     <span>
@@ -699,23 +702,16 @@ function Payments({
                 DATE
                 ================================================= */}
 
-            <div className="form-group">
-              <label>
-                Date
-              </label>
-
-              <input
-                type="date"
-                value={form.date}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    date:
-                      event.target.value,
-                  }))
-                }
-              />
-            </div>
+          <NepaliDateInput
+  value={form.date}
+  onChange={(value) =>
+    setForm((current) => ({
+      ...current,
+      date: value,
+    }))
+  }
+  label="Payment Date"
+/>
 
             {/* =================================================
                 NOTES
@@ -909,10 +905,11 @@ function Payments({
                           )}
                         </span>
 
-                        <span>
+                       <span>
                           📅{" "}
-                          {payment.date ||
-                            "No date"}
+                          {payment.date
+                            ? formatNepaliDate(payment.date)
+                            : "No date"}
                         </span>
 
                         {delivery && (

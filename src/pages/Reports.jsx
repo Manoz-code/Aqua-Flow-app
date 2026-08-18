@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
-import { formatMoney, formatNumber, getInitials } from "../utils/format";
+import {
+  formatMoney,
+  formatNumber,
+  getInitials,
+} from "../utils/format";
+
+import NepaliDateInput from "../components/NepaliDateInput";
 import { getDeliveryTotal } from "../utils/data";
 import DashboardCard from "../components/DashboardCard";
 
@@ -85,27 +91,19 @@ function Reports({ customers, deliveries, payments }) {
       </div>
 
       <div className="customer-form-card">
-        <div className="form-grid">
-          <div className="form-group">
-            <label>From Date</label>
+      <div className="form-grid">
+  <NepaliDateInput
+    value={fromDate}
+    onChange={setFromDate}
+    label="From Date"
+  />
 
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(event) => setFromDate(event.target.value)}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>To Date</label>
-
-            <input
-              type="date"
-              value={toDate}
-              onChange={(event) => setToDate(event.target.value)}
-            />
-          </div>
-        </div>
+  <NepaliDateInput
+    value={toDate}
+    onChange={setToDate}
+    label="To Date"
+  />
+</div>
 
         <div className="form-actions">
           <button
