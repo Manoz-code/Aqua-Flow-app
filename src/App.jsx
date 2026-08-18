@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { App as CapacitorApp } from "@capacitor/app";
 import "./styles/index.css";
 
 import { createId } from "./utils/format";
@@ -35,9 +36,14 @@ export default function App() {
 
 const [deliveryFormSignal, setDeliveryFormSignal] = useState(0);
 const [deliveryFormCustomerId, setDeliveryFormCustomerId] = useState(null);
+const [deliveryResetSignal, setDeliveryResetSignal] = useState(0);
 
 const [paymentFormSignal, setPaymentFormSignal] = useState(0);
 const [paymentFormCustomerId, setPaymentFormCustomerId] = useState(null);
+const [paymentResetSignal, setPaymentResetSignal] = useState(0);
+
+const [deliveryFormOpen, setDeliveryFormOpen] = useState(false);
+const [paymentFormOpen, setPaymentFormOpen] = useState(false);
 
   const [data, setData] = useState(() => {
     try {
@@ -235,8 +241,13 @@ const navigateTo = useCallback((page) => {
 
 const handleNavigate = useCallback(
   (page) => {
+    // Normal sidebar navigation must start with fresh forms.
     setDeliveryFormCustomerId(null);
     setPaymentFormCustomerId(null);
+
+    setDeliveryResetSignal((current) => current + 1);
+    setPaymentResetSignal((current) => current + 1);
+
     setSidebarOpen(false);
 
     navigateTo(page);
@@ -266,6 +277,49 @@ const handleNavigate = useCallback(
   [navigateTo]
 );
 
+useEffect(() => {
+  let listener;
+
+  const setupBackButton = async () => {
+    listener = await CapacitorApp.addListener("backButton", ({ canGoBack }) => {
+      // Close an open Delivery form first.
+      if (deliveryFormOpen) {
+        setDeliveryFormOpen(false);
+        setDeliveryResetSignal((current) => current + 1);
+        return;
+      }
+
+      // Close an open Payment form first.
+      if (paymentFormOpen) {
+        setPaymentFormOpen(false);
+        setPaymentResetSignal((current) => current + 1);
+        return;
+      }
+
+      // Otherwise use AquaFlow's navigation history.
+      if (window.history.length > 1 && activePage !== "Dashboard") {
+        window.history.back();
+        return;
+      }
+
+      // On Dashboard, let Android handle the normal back behavior.
+      if (canGoBack) {
+        window.history.back();
+      }
+    });
+  };
+
+  setupBackButton();
+
+  return () => {
+    listener?.remove();
+  };
+}, [
+  activePage,
+  deliveryFormOpen,
+  paymentFormOpen,
+]);
+
   const renderPage = () => {
     switch (activePage) {
       case "Customers":
@@ -283,30 +337,34 @@ const handleNavigate = useCallback(
         );
       case "Deliveries":
         return (
-       <Deliveries
-            customers={data.customers}
-            deliveries={data.deliveries}
-            payments={data.payments}
-            onAdd={addDelivery}
-            onUpdate={updateDelivery}
-            onDelete={deleteDelivery}
-            onMarkDelivered={markDeliveryDelivered}
-            onNavigate={handleNavigate}
-            openFormSignal={deliveryFormSignal}
-            prefillCustomerId={deliveryFormCustomerId}
-          />
+    <Deliveries
+          customers={data.customers}
+          deliveries={data.deliveries}
+          payments={data.payments}
+          onAdd={addDelivery}
+          onUpdate={updateDelivery}
+          onDelete={deleteDelivery}
+          onMarkDelivered={markDeliveryDelivered}
+          onNavigate={handleNavigate}
+          openFormSignal={deliveryFormSignal}
+          prefillCustomerId={deliveryFormCustomerId}
+          resetFormSignal={deliveryResetSignal}
+           onFormStateChange={setDeliveryFormOpen}
+        />
         );
       case "Payments":
         return (
-          <Payments
-            customers={data.customers}
-            deliveries={data.deliveries}
-            payments={data.payments}
-            onAdd={addPayment}
-            onDelete={deletePayment}
-            openFormSignal={paymentFormSignal}
-            prefillCustomerId={paymentFormCustomerId}
-          />
+        <Payments
+              customers={data.customers}
+              deliveries={data.deliveries}
+              payments={data.payments}
+              onAdd={addPayment}
+              onDelete={deletePayment}
+              openFormSignal={paymentFormSignal}
+              prefillCustomerId={paymentFormCustomerId}
+              resetFormSignal={paymentResetSignal}
+              onFormStateChange={setPaymentFormOpen}
+            />
         );
       case "Reports":
         return (

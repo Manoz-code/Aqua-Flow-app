@@ -12,7 +12,17 @@ import CustomerPicker from "../components/CustomerPicker";
    PAYMENTS
    ========================================================= */
 
-function Payments({ customers, deliveries, payments, onAdd, onDelete, openFormSignal, prefillCustomerId, }) {
+function Payments({
+  customers,
+  deliveries,
+  payments,
+  onAdd,
+  onDelete,
+  openFormSignal,
+  prefillCustomerId,
+  resetFormSignal,
+  onFormStateChange,
+}) {
   const getEmptyForm = () => ({
     customerId: "",
     deliveryId: "",
@@ -24,8 +34,11 @@ function Payments({ customers, deliveries, payments, onAdd, onDelete, openFormSi
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(getEmptyForm());
 
-
   const formRef = useRef(null);
+
+  useEffect(() => {
+  onFormStateChange?.(showForm);
+}, [showForm, onFormStateChange]);
 
 useEffect(() => {
   if (!showForm) return;
@@ -35,6 +48,11 @@ useEffect(() => {
     block: "start",
   });
 }, [showForm, openFormSignal]);
+
+useEffect(() => {
+  setShowForm(false);
+  setForm(getEmptyForm());
+}, [resetFormSignal]);
 
 useEffect(() => {
   if (!openFormSignal) return;

@@ -22,6 +22,8 @@ function Deliveries({
   onNavigate,
   openFormSignal,
   prefillCustomerId,
+  resetFormSignal,
+  onFormStateChange,
 }) {
   const getEmptyForm = () => ({
     customerId: "",
@@ -38,6 +40,9 @@ function Deliveries({
 
   const formRef = useRef(null);
 
+  useEffect(() => {
+  onFormStateChange?.(showForm);
+}, [showForm, onFormStateChange]);
 /*
  * Whenever the form opens (New or Edit), scroll it into view.
  * The user may already be scrolled down the deliveries list,
@@ -83,11 +88,23 @@ useEffect(() => {
    * Signal starts at 0, so we skip the initial mount and only
    * react when it's actually bumped (even if already on this page).
    */
- useEffect(() => {
-  if (openFormSignal) {
-    openAdd();
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+  setShowForm(false);
+  setEditingId(null);
+  setForm(getEmptyForm());
+}, [resetFormSignal]);
+
+useEffect(() => {
+  if (!openFormSignal) return;
+
+  setEditingId(null);
+  setForm({
+    ...getEmptyForm(),
+    customerId: prefillCustomerId
+      ? String(prefillCustomerId)
+      : "",
+  });
+  setShowForm(true);
 }, [openFormSignal, prefillCustomerId]);
 
   const openEdit = (delivery) => {

@@ -148,32 +148,116 @@
   box-shadow:
     0 16px 40px rgba(15, 23, 42, 0.15);
 }
-
 .customer-picker-search {
-  height: 48px;
+  min-height: 52px;
 
   display: flex;
   align-items: center;
 
-  gap: 8px;
+  gap: 9px;
 
-  padding: 0 12px;
+  padding: 6px 9px;
+
+  background: #ffffff;
 
   border-bottom: 1px solid #e2e8f0;
+}
+
+.customer-picker-search > span {
+  width: 30px;
+  height: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 8px;
+
+  background: #f0f9ff;
+  color: #0284c7;
+
+  font-size: 14px;
 }
 
 .customer-picker-search input {
   flex: 1;
   min-width: 0;
 
-  border: 0;
-  outline: 0;
+  height: 38px;
 
+  padding: 0 11px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #f8fafc;
   color: #0f172a;
 
-  font-size: 16px;
+  font-size: 14px;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  -webkit-appearance: none;
+  appearance: none;
 }
 
+.customer-picker-search input::placeholder {
+  color: #94a3b8;
+}
+
+.customer-picker-search input:focus {
+  background: #ffffff;
+
+  border-color: #7dd3fc;
+
+  box-shadow:
+    0 0 0 3px rgba(2, 132, 199, 0.08);
+}
+
+.customer-picker-search button {
+  width: 32px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: #f1f5f9;
+  color: #64748b;
+
+  font-size: 17px;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.customer-picker-search button:hover {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.customer-picker-search input::placeholder {
+  color: #94a3b8;
+}
+
+.customer-picker-search input:focus {
+  background: #ffffff;
+  color: #0f172a;
+  outline: none;
+}
 .customer-picker-search button {
   width: 30px;
   height: 30px;
@@ -304,3 +388,23 @@
 
   font-size: 11px;
 }
+
+@media (max-width: 768px) {
+  .customer-picker-search {
+    min-height: 50px;
+    padding: 6px 8px;
+  }
+
+  .customer-picker-search input {
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .customer-picker-search > span {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+  }
+}
+
+
