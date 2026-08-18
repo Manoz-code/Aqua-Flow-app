@@ -229,3 +229,12 @@
 .secondary-button:active {
   transform: translateY(1px);
 }
+
+
+/* =========================================================
+   PAYMENT HISTORY
+   ========================================================= */
+
+.payment-history {
+  margin-top: 25px;
+}

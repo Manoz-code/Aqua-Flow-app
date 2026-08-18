@@ -1,4 +1,12 @@
-import { memo, useCallback, useMemo, useState } from "react";
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { getInitials } from "../utils/format";
 
 /* =========================================================
@@ -6,15 +14,34 @@ import { getInitials } from "../utils/format";
    Used by BOTH Deliveries and Payments
    ========================================================= */
 
-const CustomerPicker = memo(function CustomerPicker({
-  customers,
-  value,
-  onChange,
-  label = "Customer *",
-}) {
+const CustomerPicker = memo(
+  forwardRef(function CustomerPicker(
+    {
+      customers,
+      value,
+      onChange,
+      label = "Customer *",
+    },
+    ref
+  ) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
 
+  const searchInputRef = useRef(null);
+
+useImperativeHandle(
+  ref,
+  () => ({
+    focus: () => {
+      setOpen(true);
+
+      requestAnimationFrame(() => {
+        searchInputRef.current?.focus();
+      });
+    },
+  }),
+  []
+);
   const sortedCustomers = useMemo(() => {
     return [...customers].sort((a, b) =>
       String(a.name || "").localeCompare(String(b.name || ""), undefined, {
@@ -114,7 +141,8 @@ const CustomerPicker = memo(function CustomerPicker({
             <span>🔍</span>
 
             <input
-              autoFocus
+              ref={searchInputRef}
+              autoFocus={open}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search name, phone or address..."
@@ -168,7 +196,8 @@ const CustomerPicker = memo(function CustomerPicker({
         </div>
       )}
     </div>
-  );
-});
+    );
+  })
+);
 
 export default CustomerPicker;
