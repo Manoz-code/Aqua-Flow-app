@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
 import { App as CapacitorApp } from "@capacitor/app";
+
 import "./styles/index.css";
 
 import { createId } from "./utils/format";
@@ -29,41 +36,87 @@ export default function App() {
      APP / SECURITY STATE
      ========================================================= */
 
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] =
+    useState(false);
+
   const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState("");
 
-  const [activePage, setActivePage] = useState("Dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pinError, setPinError] =
+    useState("");
 
-  const [currentPin, setCurrentPin] = useState(getStoredPin);
-  const [recoveryCode, setRecoveryCode] = useState(
-    getStoredRecoveryCode
-  );
+  const [activePage, setActivePage] =
+    useState("Dashboard");
+
+  const [sidebarOpen, setSidebarOpen] =
+    useState(false);
+
+  const [currentPin, setCurrentPin] =
+    useState(getStoredPin);
+
+  const [recoveryCode, setRecoveryCode] =
+    useState(getStoredRecoveryCode);
+
+  /* =========================================================
+     CUSTOMER DETAILS STATE
+     ========================================================= */
+
+  const [
+    customerDetailsOpen,
+    setCustomerDetailsOpen,
+  ] = useState(false);
+
+  const [
+    customerDetailsBackSignal,
+    setCustomerDetailsBackSignal,
+  ] = useState(0);
 
   /* =========================================================
      DELIVERY FORM STATE
      ========================================================= */
 
-  const [deliveryFormSignal, setDeliveryFormSignal] = useState(0);
-  const [deliveryFormCustomerId, setDeliveryFormCustomerId] =
-    useState(null);
-  const [deliveryResetSignal, setDeliveryResetSignal] =
-    useState(0);
-  const [deliveryFormOpen, setDeliveryFormOpen] =
-    useState(false);
+  const [
+    deliveryFormSignal,
+    setDeliveryFormSignal,
+  ] = useState(0);
+
+  const [
+    deliveryFormCustomerId,
+    setDeliveryFormCustomerId,
+  ] = useState(null);
+
+  const [
+    deliveryResetSignal,
+    setDeliveryResetSignal,
+  ] = useState(0);
+
+  const [
+    deliveryFormOpen,
+    setDeliveryFormOpen,
+  ] = useState(false);
 
   /* =========================================================
      PAYMENT FORM STATE
      ========================================================= */
 
-  const [paymentFormSignal, setPaymentFormSignal] = useState(0);
-  const [paymentFormCustomerId, setPaymentFormCustomerId] =
-    useState(null);
-  const [paymentResetSignal, setPaymentResetSignal] =
-    useState(0);
-  const [paymentFormOpen, setPaymentFormOpen] =
-    useState(false);
+  const [
+    paymentFormSignal,
+    setPaymentFormSignal,
+  ] = useState(0);
+
+  const [
+    paymentFormCustomerId,
+    setPaymentFormCustomerId,
+  ] = useState(null);
+
+  const [
+    paymentResetSignal,
+    setPaymentResetSignal,
+  ] = useState(0);
+
+  const [
+    paymentFormOpen,
+    setPaymentFormOpen,
+  ] = useState(false);
 
   /* =========================================================
      LOCAL DATA
@@ -71,15 +124,24 @@ export default function App() {
 
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved =
+        localStorage.getItem(
+          STORAGE_KEY
+        );
 
       if (!saved) {
         return EMPTY_DATA;
       }
 
-      return normalizeData(JSON.parse(saved));
+      return normalizeData(
+        JSON.parse(saved)
+      );
     } catch (error) {
-      console.error("Failed to load AquaFlow data:", error);
+      console.error(
+        "Failed to load AquaFlow data:",
+        error
+      );
+
       return EMPTY_DATA;
     }
   });
@@ -123,33 +185,42 @@ export default function App() {
         error
       );
     }
-  }, [currentPin, recoveryCode]);
+  }, [
+    currentPin,
+    recoveryCode,
+  ]);
 
   /* =========================================================
      PIN HANDLERS
      ========================================================= */
 
-  const handleNumberClick = useCallback((number) => {
-    setPinError("");
+  const handleNumberClick =
+    useCallback((number) => {
+      setPinError("");
 
-    setPin((current) => {
-      if (current.length >= 4) {
-        return current;
-      }
+      setPin((current) => {
+        if (current.length >= 4) {
+          return current;
+        }
 
-      return current + String(number);
-    });
-  }, []);
+        return current + String(number);
+      });
+    }, []);
 
-  const handlePinDelete = useCallback(() => {
-    setPin((current) => current.slice(0, -1));
-    setPinError("");
-  }, []);
+  const handlePinDelete =
+    useCallback(() => {
+      setPin((current) =>
+        current.slice(0, -1)
+      );
 
-  const handlePinClear = useCallback(() => {
-    setPin("");
-    setPinError("");
-  }, []);
+      setPinError("");
+    }, []);
+
+  const handlePinClear =
+    useCallback(() => {
+      setPin("");
+      setPinError("");
+    }, []);
 
   const handleUnlock = useCallback(() => {
     if (pin === currentPin) {
@@ -175,14 +246,25 @@ export default function App() {
     setActivePage("Dashboard");
     setSidebarOpen(false);
 
+    setCustomerDetailsOpen(false);
+
+    setCustomerDetailsBackSignal(
+      (current) => current + 1
+    );
+
     setDeliveryFormCustomerId(null);
     setPaymentFormCustomerId(null);
 
     setDeliveryFormOpen(false);
     setPaymentFormOpen(false);
 
-    setDeliveryResetSignal((current) => current + 1);
-    setPaymentResetSignal((current) => current + 1);
+    setDeliveryResetSignal(
+      (current) => current + 1
+    );
+
+    setPaymentResetSignal(
+      (current) => current + 1
+    );
 
     window.history.replaceState(
       {
@@ -198,157 +280,200 @@ export default function App() {
      CUSTOMER CRUD
      ========================================================= */
 
-const addCustomer = useCallback((customer) => {
-  const customerId = createId("customer_");
+  const addCustomer = useCallback(
+    (customer) => {
+      const customerId =
+        createId("customer_");
 
-  setData((current) => ({
-    ...current,
+      setData((current) => ({
+        ...current,
 
-    customers: [
-      ...current.customers,
+        customers: [
+          ...current.customers,
 
-      {
-        ...customer,
-        id: customerId,
-        previousBalance:
-          Number(customer.previousBalance) || 0,
-        createdAt: new Date().toISOString(),
-      },
-    ],
-  }));
+          {
+            ...customer,
+            id: customerId,
+            previousBalance:
+              Number(
+                customer.previousBalance
+              ) || 0,
+            createdAt:
+              new Date().toISOString(),
+          },
+        ],
+      }));
 
-  return customerId;
-}, []);
+      return customerId;
+    },
+    []
+  );
 
-  const updateCustomer = useCallback((id, updates) => {
-    setData((current) => ({
-      ...current,
+  const updateCustomer =
+    useCallback((id, updates) => {
+      setData((current) => ({
+        ...current,
 
-      customers: current.customers.map((customer) =>
-        String(customer.id) === String(id)
-          ? {
-              ...customer,
-              ...updates,
-              updatedAt: new Date().toISOString(),
-            }
-          : customer
-      ),
-    }));
-  }, []);
+        customers:
+          current.customers.map(
+            (customer) =>
+              String(customer.id) ===
+              String(id)
+                ? {
+                    ...customer,
+                    ...updates,
+                    updatedAt:
+                      new Date().toISOString(),
+                  }
+                : customer
+          ),
+      }));
+    }, []);
 
-  const deleteCustomer = useCallback((id) => {
-    setData((current) => ({
-      ...current,
+  const deleteCustomer =
+    useCallback((id) => {
+      setData((current) => ({
+        ...current,
 
-      customers: current.customers.filter(
-        (customer) =>
-          String(customer.id) !== String(id)
-      ),
-    }));
-  }, []);
+        customers:
+          current.customers.filter(
+            (customer) =>
+              String(customer.id) !==
+              String(id)
+          ),
+      }));
+    }, []);
 
   /* =========================================================
      DELIVERY CRUD
      ========================================================= */
 
-  const addDelivery = useCallback((delivery) => {
-    setData((current) => ({
-      ...current,
+  const addDelivery =
+    useCallback((delivery) => {
+      setData((current) => ({
+        ...current,
 
-      deliveries: [
-        ...current.deliveries,
+        deliveries: [
+          ...current.deliveries,
 
-        {
-          ...delivery,
-          id: createId("delivery_"),
-          status: "pending",
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    }));
-  }, []);
+          {
+            ...delivery,
+            id: createId(
+              "delivery_"
+            ),
+            status: "pending",
+            createdAt:
+              new Date().toISOString(),
+          },
+        ],
+      }));
+    }, []);
 
-  const updateDelivery = useCallback((id, updates) => {
-    setData((current) => ({
-      ...current,
+  const updateDelivery =
+    useCallback((id, updates) => {
+      setData((current) => ({
+        ...current,
 
-      deliveries: current.deliveries.map((delivery) =>
-        String(delivery.id) === String(id)
-          ? {
-              ...delivery,
-              ...updates,
-              updatedAt: new Date().toISOString(),
-            }
-          : delivery
-      ),
-    }));
-  }, []);
+        deliveries:
+          current.deliveries.map(
+            (delivery) =>
+              String(delivery.id) ===
+              String(id)
+                ? {
+                    ...delivery,
+                    ...updates,
+                    updatedAt:
+                      new Date().toISOString(),
+                  }
+                : delivery
+          ),
+      }));
+    }, []);
 
-  const markDeliveryDelivered = useCallback((id) => {
-    const now = new Date().toISOString();
+  const markDeliveryDelivered =
+    useCallback((id) => {
+      const now =
+        new Date().toISOString();
 
-    setData((current) => ({
-      ...current,
+      setData((current) => ({
+        ...current,
 
-      deliveries: current.deliveries.map((delivery) =>
-        String(delivery.id) === String(id)
-          ? {
-              ...delivery,
-              status: "delivered",
-              deliveredAt: now,
-              updatedAt: now,
-            }
-          : delivery
-      ),
-    }));
-  }, []);
+        deliveries:
+          current.deliveries.map(
+            (delivery) =>
+              String(delivery.id) ===
+              String(id)
+                ? {
+                    ...delivery,
+                    status:
+                      "delivered",
+                    deliveredAt: now,
+                    updatedAt: now,
+                  }
+                : delivery
+          ),
+      }));
+    }, []);
 
-  const deleteDelivery = useCallback((id) => {
-    setData((current) => ({
-      ...current,
+  const deleteDelivery =
+    useCallback((id) => {
+      setData((current) => ({
+        ...current,
 
-      deliveries: current.deliveries.filter(
-        (delivery) =>
-          String(delivery.id) !== String(id)
-      ),
+        deliveries:
+          current.deliveries.filter(
+            (delivery) =>
+              String(delivery.id) !==
+              String(id)
+          ),
 
-      payments: current.payments.filter(
-        (payment) =>
-          String(payment.deliveryId) !== String(id)
-      ),
-    }));
-  }, []);
+        payments:
+          current.payments.filter(
+            (payment) =>
+              String(
+                payment.deliveryId
+              ) !== String(id)
+          ),
+      }));
+    }, []);
 
   /* =========================================================
      PAYMENT CRUD
      ========================================================= */
 
-  const addPayment = useCallback((payment) => {
-    setData((current) => ({
-      ...current,
+  const addPayment =
+    useCallback((payment) => {
+      setData((current) => ({
+        ...current,
 
-      payments: [
-        ...current.payments,
+        payments: [
+          ...current.payments,
 
-        {
-          ...payment,
-          id: createId("payment_"),
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    }));
-  }, []);
+          {
+            ...payment,
+            id: createId(
+              "payment_"
+            ),
+            createdAt:
+              new Date().toISOString(),
+          },
+        ],
+      }));
+    }, []);
 
-  const deletePayment = useCallback((id) => {
-    setData((current) => ({
-      ...current,
+  const deletePayment =
+    useCallback((id) => {
+      setData((current) => ({
+        ...current,
 
-      payments: current.payments.filter(
-        (payment) =>
-          String(payment.id) !== String(id)
-      ),
-    }));
-  }, []);
+        payments:
+          current.payments.filter(
+            (payment) =>
+              String(payment.id) !==
+              String(id)
+          ),
+      }));
+    }, []);
 
   /* =========================================================
      BROWSER HISTORY
@@ -365,17 +490,35 @@ const addCustomer = useCallback((customer) => {
     );
 
     const handlePopState = (event) => {
-      const page = event.state?.aquaflow
-        ? event.state.page
-        : "Dashboard";
+      const state = event.state;
 
       /*
-       * Back navigation should never reuse
-       * contextual customer selections.
+       * Customer Details has its own browser
+       * history state. Customers.jsx handles
+       * clearing the selected customer.
        */
+      if (
+        state?.aquaflow &&
+        state.customerDetails &&
+        state.page === "Customers"
+      ) {
+        setActivePage("Customers");
+        setSidebarOpen(false);
+
+        setDeliveryFormCustomerId(null);
+        setPaymentFormCustomerId(null);
+
+        return;
+      }
+
+      const page = state?.aquaflow
+        ? state.page
+        : "Dashboard";
 
       setDeliveryFormCustomerId(null);
       setPaymentFormCustomerId(null);
+
+      setCustomerDetailsOpen(false);
 
       setActivePage(page);
       setSidebarOpen(false);
@@ -398,24 +541,27 @@ const addCustomer = useCallback((customer) => {
      NAVIGATION
      ========================================================= */
 
-  const navigateTo = useCallback((page) => {
-    setActivePage((current) => {
-      if (current === page) {
-        return current;
-      }
+  const navigateTo = useCallback(
+    (page) => {
+      setActivePage((current) => {
+        if (current === page) {
+          return current;
+        }
 
-      window.history.pushState(
-        {
-          page,
-          aquaflow: true,
-        },
-        "",
-        window.location.href
-      );
+        window.history.pushState(
+          {
+            page,
+            aquaflow: true,
+          },
+          "",
+          window.location.href
+        );
 
-      return page;
-    });
-  }, []);
+        return page;
+      });
+    },
+    []
+  );
 
   /* =========================================================
      NORMAL NAVIGATION
@@ -423,13 +569,14 @@ const addCustomer = useCallback((customer) => {
 
   const handleNavigate = useCallback(
     (page) => {
-      /*
-       * Normal navigation must never carry
-       * old contextual customer selections.
-       */
-
       setDeliveryFormCustomerId(null);
       setPaymentFormCustomerId(null);
+
+      setCustomerDetailsOpen(false);
+
+      setCustomerDetailsBackSignal(
+        (current) => current + 1
+      );
 
       setDeliveryResetSignal(
         (current) => current + 1
@@ -450,137 +597,177 @@ const addCustomer = useCallback((customer) => {
      QUICK NEW DELIVERY
      ========================================================= */
 
-  const handleQuickNewDelivery = useCallback(() => {
-    setSidebarOpen(false);
-
-    setDeliveryFormCustomerId(null);
-
-    setDeliveryFormSignal(
-      (current) => current + 1
-    );
-
-    navigateTo("Deliveries");
-  }, [navigateTo]);
-
-  /* =========================================================
-     QUICK CUSTOMER DELIVERY
-     ========================================================= */
-
-  const handleQuickCustomerDelivery = useCallback(
-    (customerId) => {
+  const handleQuickNewDelivery =
+    useCallback(() => {
       setSidebarOpen(false);
 
-      setDeliveryFormCustomerId(
-        customerId || null
-      );
+      setDeliveryFormCustomerId(null);
 
       setDeliveryFormSignal(
         (current) => current + 1
       );
 
       navigateTo("Deliveries");
-    },
-    [navigateTo]
-  );
+    }, [navigateTo]);
+
+  /* =========================================================
+     QUICK CUSTOMER DELIVERY
+     ========================================================= */
+
+  const handleQuickCustomerDelivery =
+    useCallback(
+      (customerId) => {
+        setSidebarOpen(false);
+
+        setDeliveryFormCustomerId(
+          customerId || null
+        );
+
+        setDeliveryFormSignal(
+          (current) => current + 1
+        );
+
+        navigateTo("Deliveries");
+      },
+      [navigateTo]
+    );
 
   /* =========================================================
      QUICK CUSTOMER PAYMENT
      ========================================================= */
 
-  const handleQuickPayment = useCallback(
-    (customerId) => {
-      setSidebarOpen(false);
+  const handleQuickPayment =
+    useCallback(
+      (customerId) => {
+        setSidebarOpen(false);
 
-      setPaymentFormCustomerId(
-        customerId || null
-      );
+        setPaymentFormCustomerId(
+          customerId || null
+        );
 
-      setPaymentFormSignal(
-        (current) => current + 1
-      );
+        setPaymentFormSignal(
+          (current) => current + 1
+        );
 
-      navigateTo("Payments");
-    },
-    [navigateTo]
-  );
+        navigateTo("Payments");
+      },
+      [navigateTo]
+    );
 
   /* =========================================================
      ANDROID BACK BUTTON
-     
+
      Priority:
+
        1. Sidebar
-       2. Delivery form
-       3. Payment form
-       4. Previous page
-       5. Android/browser default
+       2. Customer Details
+       3. Delivery form
+       4. Payment form
+       5. AquaFlow history
+       6. Android/browser default
      ========================================================= */
 
   useEffect(() => {
     let listener;
 
-    const setupBackButton = async () => {
-      listener = await CapacitorApp.addListener(
-        "backButton",
-        ({ canGoBack }) => {
-          /* -----------------------------------------------
-             1. SIDEBAR OPEN
-             ----------------------------------------------- */
+    const setupBackButton =
+      async () => {
+        listener =
+          await CapacitorApp.addListener(
+            "backButton",
+            ({ canGoBack }) => {
+              /* ---------------------------------------------
+                 1. SIDEBAR
+                 --------------------------------------------- */
 
-          if (sidebarOpen) {
-            setSidebarOpen(false);
-            return;
-          }
+              if (sidebarOpen) {
+                setSidebarOpen(false);
+                return;
+              }
 
-          /* -----------------------------------------------
-             2. DELIVERY FORM OPEN
-             ----------------------------------------------- */
+              /* ---------------------------------------------
+                 2. CUSTOMER DETAILS
+                 --------------------------------------------- */
 
-          if (deliveryFormOpen) {
-            setDeliveryFormOpen(false);
+              if (
+                activePage ===
+                  "Customers" &&
+                customerDetailsOpen
+              ) {
+                /*
+                 * Customers.jsx clears its
+                 * selected customer.
+                 */
+                setCustomerDetailsBackSignal(
+                  (current) =>
+                    current + 1
+                );
 
-            setDeliveryResetSignal(
-              (current) => current + 1
-            );
+                setCustomerDetailsOpen(
+                  false
+                );
 
-            return;
-          }
+                return;
+              }
 
-          /* -----------------------------------------------
-             3. PAYMENT FORM OPEN
-             ----------------------------------------------- */
+              /* ---------------------------------------------
+                 3. DELIVERY FORM
+                 --------------------------------------------- */
 
-          if (paymentFormOpen) {
-            setPaymentFormOpen(false);
+              if (deliveryFormOpen) {
+                setDeliveryFormOpen(
+                  false
+                );
 
-            setPaymentResetSignal(
-              (current) => current + 1
-            );
+                setDeliveryResetSignal(
+                  (current) =>
+                    current + 1
+                );
 
-            return;
-          }
+                return;
+              }
 
-          /* -----------------------------------------------
-             4. AQUAFLOW NAVIGATION HISTORY
-             ----------------------------------------------- */
+              /* ---------------------------------------------
+                 4. PAYMENT FORM
+                 --------------------------------------------- */
 
-          if (
-            window.history.length > 1 &&
-            activePage !== "Dashboard"
-          ) {
-            window.history.back();
-            return;
-          }
+              if (paymentFormOpen) {
+                setPaymentFormOpen(
+                  false
+                );
 
-          /* -----------------------------------------------
-             5. DEFAULT ANDROID/BROWSER BACK
-             ----------------------------------------------- */
+                setPaymentResetSignal(
+                  (current) =>
+                    current + 1
+                );
 
-          if (canGoBack) {
-            window.history.back();
-          }
-        }
-      );
-    };
+                return;
+              }
+
+              /* ---------------------------------------------
+                 5. AQUAFLOW PAGE HISTORY
+                 --------------------------------------------- */
+
+              if (
+                window.history.length >
+                  1 &&
+                activePage !==
+                  "Dashboard"
+              ) {
+                window.history.back();
+                return;
+              }
+
+              /* ---------------------------------------------
+                 6. DEFAULT ANDROID/BROWSER BACK
+                 --------------------------------------------- */
+
+              if (canGoBack) {
+                window.history.back();
+              }
+            }
+          );
+      };
 
     setupBackButton();
 
@@ -589,6 +776,7 @@ const addCustomer = useCallback((customer) => {
     };
   }, [
     activePage,
+    customerDetailsOpen,
     deliveryFormOpen,
     paymentFormOpen,
     sidebarOpen,
@@ -609,9 +797,17 @@ const addCustomer = useCallback((customer) => {
             onAdd={addCustomer}
             onUpdate={updateCustomer}
             onDelete={deleteCustomer}
-            onQuickPayment={handleQuickPayment}
+            onQuickPayment={
+              handleQuickPayment
+            }
             onQuickDelivery={
               handleQuickCustomerDelivery
+            }
+            onDetailsStateChange={
+              setCustomerDetailsOpen
+            }
+            detailsBackSignal={
+              customerDetailsBackSignal
             }
           />
         );
@@ -623,12 +819,18 @@ const addCustomer = useCallback((customer) => {
             deliveries={data.deliveries}
             payments={data.payments}
             onAdd={addDelivery}
-            onUpdate={updateDelivery}
-            onDelete={deleteDelivery}
+            onUpdate={
+              updateDelivery
+            }
+            onDelete={
+              deleteDelivery
+            }
             onMarkDelivered={
               markDeliveryDelivered
             }
-            onNavigate={handleNavigate}
+            onNavigate={
+              handleNavigate
+            }
             openFormSignal={
               deliveryFormSignal
             }
@@ -651,7 +853,9 @@ const addCustomer = useCallback((customer) => {
             deliveries={data.deliveries}
             payments={data.payments}
             onAdd={addPayment}
-            onDelete={deletePayment}
+            onDelete={
+              deletePayment
+            }
             openFormSignal={
               paymentFormSignal
             }
@@ -682,9 +886,15 @@ const addCustomer = useCallback((customer) => {
             data={data}
             setData={setData}
             currentPin={currentPin}
-            setCurrentPin={setCurrentPin}
-            recoveryCode={recoveryCode}
-            setRecoveryCode={setRecoveryCode}
+            setCurrentPin={
+              setCurrentPin
+            }
+            recoveryCode={
+              recoveryCode
+            }
+            setRecoveryCode={
+              setRecoveryCode
+            }
           />
         );
 
@@ -695,7 +905,9 @@ const addCustomer = useCallback((customer) => {
             customers={data.customers}
             deliveries={data.deliveries}
             payments={data.payments}
-            onNavigate={handleNavigate}
+            onNavigate={
+              handleNavigate
+            }
             onNewDelivery={
               handleQuickNewDelivery
             }
@@ -716,14 +928,31 @@ const addCustomer = useCallback((customer) => {
       <PinScreen
         pin={pin}
         error={pinError}
-        onNumberClick={handleNumberClick}
-        onDelete={handlePinDelete}
-        onClear={handlePinClear}
-        onUnlock={handleUnlock}
-        currentPin={currentPin}
-        recoveryCode={recoveryCode}
-        onPinRecovered={(newPin) => {
-          setCurrentPin(newPin);
+        onNumberClick={
+          handleNumberClick
+        }
+        onDelete={
+          handlePinDelete
+        }
+        onClear={
+          handlePinClear
+        }
+        onUnlock={
+          handleUnlock
+        }
+        currentPin={
+          currentPin
+        }
+        recoveryCode={
+          recoveryCode
+        }
+        onPinRecovered={(
+          newPin
+        ) => {
+          setCurrentPin(
+            newPin
+          );
+
           setPin("");
           setPinError("");
           setIsUnlocked(true);
@@ -744,10 +973,13 @@ const addCustomer = useCallback((customer) => {
             type="button"
             className="hamburger-button"
             aria-label="Open navigation"
-            aria-expanded={sidebarOpen}
+            aria-expanded={
+              sidebarOpen
+            }
             onClick={() =>
               setSidebarOpen(
-                (current) => !current
+                (current) =>
+                  !current
               )
             }
           >
@@ -790,7 +1022,9 @@ const addCustomer = useCallback((customer) => {
 
         <Sidebar
           activePage={activePage}
-          onNavigate={handleNavigate}
+          onNavigate={
+            handleNavigate
+          }
           isOpen={sidebarOpen}
           onClose={() =>
             setSidebarOpen(false)

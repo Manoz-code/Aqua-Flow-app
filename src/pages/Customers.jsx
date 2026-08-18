@@ -31,38 +31,33 @@ function Customers({
   onDelete,
   onQuickPayment,
   onQuickDelivery,
+  onDetailsStateChange,
+  detailsBackSignal,
 }) {
   /* =======================================================
      STATE
      ======================================================= */
 
   const [search, setSearch] = useState("");
-  const [showForm, setShowForm] =
-    useState(false);
-  const [editingId, setEditingId] =
-    useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [selectedCustomer, setSelectedCustomer] =
     useState(null);
 
-  /*
-   * Used after creating a customer.
-   * The newly created customer card will be
-   * automatically scrolled into view.
-   */
   const [
     newlyCreatedCustomerId,
     setNewlyCreatedCustomerId,
   ] = useState(null);
 
-  /*
-   * Store DOM references for customer cards.
-   */
   const customerRefs = useRef(
     new Map()
   );
 
+  const customerDetailsRef =
+    useRef(null);
+
   /* =======================================================
-     SELECTED CUSTOMER DATA
+     SELECTED CUSTOMER
      ======================================================= */
 
   const selectedCustomerData = useMemo(
@@ -72,11 +67,73 @@ function Customers({
           String(customer.id) ===
           String(selectedCustomer)
       ) || null,
-    [
-      customers,
-      selectedCustomer,
-    ]
+    [customers, selectedCustomer]
   );
+
+  /* =======================================================
+     REPORT DETAILS STATE TO APP
+     ======================================================= */
+
+  useEffect(() => {
+    onDetailsStateChange?.(
+      Boolean(selectedCustomerData)
+    );
+  }, [
+    selectedCustomerData,
+    onDetailsStateChange,
+  ]);
+
+  /* =======================================================
+     ANDROID BACK REQUEST
+     ======================================================= */
+
+  useEffect(() => {
+    if (!detailsBackSignal) {
+      return;
+    }
+
+    setSelectedCustomer(null);
+  }, [detailsBackSignal]);
+
+  /* =======================================================
+     BROWSER BACK
+
+     When the browser returns from the Customer Details
+     history state, clear the selected customer.
+     ======================================================= */
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const state = event.state;
+
+      /*
+       * The Customer Details state belongs to
+       * the Customers page. Going back from it
+       * means returning to the customer list.
+       */
+      if (
+        state?.aquaflow &&
+        state?.page === "Customers" &&
+        state?.customerDetails
+      ) {
+        return;
+      }
+
+      setSelectedCustomer(null);
+    };
+
+    window.addEventListener(
+      "popstate",
+      handlePopState
+    );
+
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        handlePopState
+      );
+    };
+  }, []);
 
   /* =======================================================
      EMPTY FORM
@@ -92,14 +149,18 @@ function Customers({
     useState(emptyForm);
 
   /* =======================================================
-     SORT CUSTOMERS
+     SORT
      ======================================================= */
 
   const sortedCustomers = useMemo(
     () =>
       [...customers].sort((a, b) =>
-        String(a.name || "").localeCompare(
-          String(b.name || ""),
+        String(
+          a.name || ""
+        ).localeCompare(
+          String(
+            b.name || ""
+          ),
           undefined,
           {
             sensitivity: "base",
@@ -110,39 +171,40 @@ function Customers({
   );
 
   /* =======================================================
-     FILTER CUSTOMERS
+     SEARCH
      ======================================================= */
 
-  const filteredCustomers = useMemo(() => {
-    const query = search
-      .trim()
-      .toLowerCase();
+  const filteredCustomers =
+    useMemo(() => {
+      const query = search
+        .trim()
+        .toLowerCase();
 
-    if (!query) {
-      return sortedCustomers;
-    }
+      if (!query) {
+        return sortedCustomers;
+      }
 
-    return sortedCustomers.filter(
-      (customer) =>
-        [
-          customer.name,
-          customer.phone,
-          customer.address,
-        ]
-          .filter(Boolean)
-          .some((value) =>
-            String(value)
-              .toLowerCase()
-              .includes(query)
-          )
-    );
-  }, [
-    sortedCustomers,
-    search,
-  ]);
+      return sortedCustomers.filter(
+        (customer) =>
+          [
+            customer.name,
+            customer.phone,
+            customer.address,
+          ]
+            .filter(Boolean)
+            .some((value) =>
+              String(value)
+                .toLowerCase()
+                .includes(query)
+            )
+      );
+    }, [
+      sortedCustomers,
+      search,
+    ]);
 
   /* =======================================================
-     SCROLL TO NEWLY CREATED CUSTOMER
+     SCROLL TO NEW CUSTOMER
      ======================================================= */
 
   useEffect(() => {
@@ -177,6 +239,82 @@ function Customers({
   ]);
 
   /* =======================================================
+     SCROLL TO CUSTOMER DETAILS
+     ======================================================= */
+
+  useEffect(() => {
+    if (!selectedCustomerData) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      customerDetailsRef.current?.scrollIntoView(
+        {
+          behavior: "smooth",
+          block: "start",
+        }
+      );
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [selectedCustomerData]);
+
+  /* =======================================================
+     OPEN CUSTOMER DETAILS
+     ======================================================= */
+
+  const openCustomerDetails = (
+    customerId
+  ) => {
+    const id = String(customerId);
+
+    /*
+     * Add a real browser-history state for
+     * Customer Details.
+     *
+     * This means browser Back returns to the
+     * customer list instead of jumping to Dashboard.
+     */
+    window.history.pushState(
+      {
+        aquaflow: true,
+        page: "Customers",
+        customerDetails: true,
+        customerId: id,
+      },
+      "",
+      window.location.href
+    );
+
+    setSelectedCustomer(id);
+  };
+
+  /* =======================================================
+     CLOSE CUSTOMER DETAILS
+     ======================================================= */
+
+  const closeCustomerDetails = () => {
+    /*
+     * When Details has its own history state,
+     * go back to the Customers list state.
+     */
+    if (
+      window.history.state?.aquaflow &&
+      window.history.state?.page ===
+        "Customers" &&
+      window.history.state
+        ?.customerDetails
+    ) {
+      window.history.back();
+      return;
+    }
+
+    setSelectedCustomer(null);
+  };
+
+  /* =======================================================
      OPEN ADD FORM
      ======================================================= */
 
@@ -196,7 +334,8 @@ function Customers({
     setForm({
       name: customer.name || "",
       phone: customer.phone || "",
-      address: customer.address || "",
+      address:
+        customer.address || "",
     });
 
     setShowForm(true);
@@ -234,10 +373,6 @@ function Customers({
       return;
     }
 
-    /* -----------------------------------------------------
-       EDIT EXISTING CUSTOMER
-       ----------------------------------------------------- */
-
     if (editingId) {
       onUpdate(editingId, {
         name,
@@ -245,25 +380,13 @@ function Customers({
         address:
           form.address.trim(),
       });
-    }
-
-    /* -----------------------------------------------------
-       ADD NEW CUSTOMER
-       ----------------------------------------------------- */
-
-    else {
+    } else {
       const customerId = onAdd({
         name,
         phone: form.phone.trim(),
         address:
           form.address.trim(),
       });
-
-      /*
-       * App.jsx returns the newly generated ID.
-       * Save it so we can scroll directly to
-       * the new card after React renders it.
-       */
 
       if (customerId) {
         setNewlyCreatedCustomerId(
@@ -272,17 +395,13 @@ function Customers({
       }
     }
 
-    /* -----------------------------------------------------
-       RESET FORM
-       ----------------------------------------------------- */
-
     setForm(emptyForm);
     setEditingId(null);
     setShowForm(false);
   };
 
   /* =======================================================
-     DELETE CUSTOMER
+     DELETE
      ======================================================= */
 
   const handleDelete = (customer) => {
@@ -291,7 +410,8 @@ function Customers({
         (delivery) =>
           String(
             delivery.customerId
-          ) === String(customer.id)
+          ) ===
+          String(customer.id)
       );
 
     const message =
@@ -303,7 +423,38 @@ function Customers({
       return;
     }
 
+    if (
+      String(selectedCustomer) ===
+      String(customer.id)
+    ) {
+      setSelectedCustomer(null);
+    }
+
     onDelete(customer.id);
+  };
+
+  /* =======================================================
+     QUICK DELIVERY
+     ======================================================= */
+
+  const handleQuickDelivery = (
+    customerId
+  ) => {
+    setSelectedCustomer(null);
+
+    onQuickDelivery?.(customerId);
+  };
+
+  /* =======================================================
+     QUICK PAYMENT
+     ======================================================= */
+
+  const handleQuickPayment = (
+    customerId
+  ) => {
+    setSelectedCustomer(null);
+
+    onQuickPayment?.(customerId);
   };
 
   /* =======================================================
@@ -313,7 +464,7 @@ function Customers({
   return (
     <>
       {/* ===================================================
-          PAGE HEADER
+          HEADER
           =================================================== */}
 
       <div className="page-header">
@@ -325,389 +476,377 @@ function Customers({
           </p>
         </div>
 
-        <button
-          type="button"
-          className="primary-button"
-          onClick={openAdd}
-        >
-          + Add Customer
-        </button>
+        {!selectedCustomerData && (
+          <button
+            type="button"
+            className="primary-button"
+            onClick={openAdd}
+          >
+            + Add Customer
+          </button>
+        )}
       </div>
 
       {/* ===================================================
-          CUSTOMER DETAILS
+          CUSTOMER DETAILS VIEW
           =================================================== */}
 
-      {selectedCustomerData && (
-        <CustomerDetails
-          customer={selectedCustomerData}
-          deliveries={deliveries}
-          payments={payments}
-          onUpdate={onUpdate}
-          onClose={() =>
-            setSelectedCustomer(null)
-          }
-          onQuickPayment={(
-            customerId
-          ) => {
-            setSelectedCustomer(null);
-
-            onQuickPayment?.(
-              customerId
-            );
-          }}
-          onQuickDelivery={(
-            customerId
-          ) => {
-            setSelectedCustomer(null);
-
-            onQuickDelivery?.(
-              customerId
-            );
-          }}
-        />
-      )}
-
-      {/* ===================================================
-          CUSTOMER FORM
-          =================================================== */}
-
-      {showForm && (
-        <form
-          className="customer-form-card"
-          onSubmit={handleSubmit}
+      {selectedCustomerData ? (
+        <div
+          ref={customerDetailsRef}
+          className="customer-details-view"
         >
-          <div className="form-header">
-            <div>
-              <h3>
-                {editingId
-                  ? "Edit Customer"
-                  : "Add Customer"}
-              </h3>
+          <CustomerDetails
+            customer={selectedCustomerData}
+            deliveries={deliveries}
+            payments={payments}
+            onUpdate={onUpdate}
+            onClose={
+              closeCustomerDetails
+            }
+            onQuickPayment={
+              handleQuickPayment
+            }
+            onQuickDelivery={
+              handleQuickDelivery
+            }
+          />
+        </div>
+      ) : (
+        <>
+          {/* ===============================================
+              ADD / EDIT FORM
+              =============================================== */}
 
-              <p>
-                Enter the customer's basic
-                information.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              className="close-button"
-              onClick={() =>
-                setShowForm(false)
-              }
+          {showForm && (
+            <form
+              className="customer-form-card"
+              onSubmit={handleSubmit}
             >
-              ×
-            </button>
-          </div>
+              <div className="form-header">
+                <div>
+                  <h3>
+                    {editingId
+                      ? "Edit Customer"
+                      : "Add Customer"}
+                  </h3>
 
-          <div className="form-grid">
-            {/* =============================================
-                NAME
-                ============================================= */}
+                  <p>
+                    Enter the customer's
+                    basic information.
+                  </p>
+                </div>
 
-            <div className="form-group">
-              <label>
-                Customer Name *
-              </label>
+                <button
+                  type="button"
+                  className="close-button"
+                  onClick={() =>
+                    setShowForm(false)
+                  }
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>
+                    Customer Name *
+                  </label>
+
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={
+                      handleInput
+                    }
+                    placeholder="Customer name"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    Phone
+                  </label>
+
+                  <input
+                    name="phone"
+                    value={form.phone}
+                    onChange={
+                      handleInput
+                    }
+                    placeholder="Phone number"
+                  />
+                </div>
+
+                <div className="form-group form-group-full">
+                  <label>
+                    Address
+                  </label>
+
+                  <textarea
+                    name="address"
+                    value={
+                      form.address
+                    }
+                    onChange={
+                      handleInput
+                    }
+                    placeholder="Customer address"
+                  />
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() =>
+                    setShowForm(false)
+                  }
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="primary-button"
+                >
+                  {editingId
+                    ? "Update Customer"
+                    : "Save Customer"}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ===============================================
+              SEARCH
+              =============================================== */}
+
+          <div className="customer-toolbar">
+            <div className="search-box">
+              <span>🔍</span>
 
               <input
-                name="name"
-                value={form.name}
-                onChange={handleInput}
-                placeholder="Customer name"
-                autoFocus
+                value={search}
+                onChange={(event) =>
+                  setSearch(
+                    event.target.value
+                  )
+                }
+                placeholder="Search customer..."
               />
             </div>
 
-            {/* =============================================
-                PHONE
-                ============================================= */}
-
-            <div className="form-group">
-              <label>
-                Phone
-              </label>
-
-              <input
-                name="phone"
-                value={form.phone}
-                onChange={handleInput}
-                placeholder="Phone number"
-              />
-            </div>
-
-            {/* =============================================
-                ADDRESS
-                ============================================= */}
-
-            <div className="form-group form-group-full">
-              <label>
-                Address
-              </label>
-
-              <textarea
-                name="address"
-                value={form.address}
-                onChange={handleInput}
-                placeholder="Customer address"
-              />
+            <div className="customer-count">
+              {filteredCustomers.length}{" "}
+              of {customers.length}{" "}
+              customers
             </div>
           </div>
 
           {/* ===============================================
-              FORM ACTIONS
+              CUSTOMER LIST
               =============================================== */}
 
-          <div className="form-actions">
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={() =>
-                setShowForm(false)
-              }
-            >
-              Cancel
-            </button>
+          {filteredCustomers.length ===
+          0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">
+                👥
+              </div>
 
-            <button
-              type="submit"
-              className="primary-button"
-            >
-              {editingId
-                ? "Update Customer"
-                : "Save Customer"}
-            </button>
-          </div>
-        </form>
-      )}
+              <h3>
+                {search
+                  ? "No customers found"
+                  : "No customers yet"}
+              </h3>
 
-      {/* ===================================================
-          SEARCH
-          =================================================== */}
+              <p>
+                {search
+                  ? "Try another search."
+                  : "Add your first customer to get started."}
+              </p>
 
-      <div className="customer-toolbar">
-        <div className="search-box">
-          <span>🔍</span>
-
-          <input
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-            placeholder="Search customer..."
-          />
-        </div>
-
-        <div className="customer-count">
-          {filteredCustomers.length} of{" "}
-          {customers.length} customers
-        </div>
-      </div>
-
-      {/* ===================================================
-          CUSTOMER LIST
-          =================================================== */}
-
-      {filteredCustomers.length ===
-      0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">
-            👥
-          </div>
-
-          <h3>
-            {search
-              ? "No customers found"
-              : "No customers yet"}
-          </h3>
-
-          <p>
-            {search
-              ? "Try another search."
-              : "Add your first customer to get started."}
-          </p>
-
-          {!search && (
-            <button
-              type="button"
-              className="primary-button"
-              onClick={openAdd}
-            >
-              + Add Customer
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="customers-list">
-          {filteredCustomers.map(
-            (customer) => {
-              const customerDeliveries =
-                deliveries.filter(
-                  (delivery) =>
-                    String(
-                      delivery.customerId
-                    ) ===
-                    String(
-                      customer.id
-                    )
-                );
-
-              const billed =
-                customerDeliveries.reduce(
-                  (
-                    sum,
-                    delivery
-                  ) =>
-                    sum +
-                    getDeliveryTotal(
-                      delivery
-                    ),
-                  0
-                );
-
-              const paid =
-                getCustomerPayments(
-                  payments,
-                  customer.id
-                );
-
-              const outstanding =
-                Math.max(
-                  0,
-                  (Number(
-                    customer.previousBalance
-                  ) || 0) +
-                    billed -
-                    paid
-                );
-
-              return (
-                <div
-                  className="customer-card"
-                  key={customer.id}
-                  ref={(element) => {
-                    const id =
-                      String(
-                        customer.id
-                      );
-
-                    if (element) {
-                      customerRefs.current.set(
-                        id,
-                        element
-                      );
-                    } else {
-                      customerRefs.current.delete(
-                        id
-                      );
-                    }
-                  }}
-                  onClick={() =>
-                    setSelectedCustomer(
-                      customer.id
-                    )
-                  }
-                  style={{
-                    cursor:
-                      "pointer",
-                  }}
+              {!search && (
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={openAdd}
                 >
-                  {/* =======================================
-                      AVATAR
-                      ======================================= */}
+                  + Add Customer
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="customers-list">
+              {filteredCustomers.map(
+                (customer) => {
+                  const customerDeliveries =
+                    deliveries.filter(
+                      (delivery) =>
+                        String(
+                          delivery.customerId
+                        ) ===
+                        String(
+                          customer.id
+                        )
+                    );
 
-                  <div className="customer-avatar">
-                    {getInitials(
-                      customer.name
-                    )}
-                  </div>
+                  const billed =
+                    customerDeliveries.reduce(
+                      (
+                        sum,
+                        delivery
+                      ) =>
+                        sum +
+                        getDeliveryTotal(
+                          delivery
+                        ),
+                      0
+                    );
 
-                  {/* =======================================
-                      CUSTOMER INFORMATION
-                      ======================================= */}
+                  const paid =
+                    getCustomerPayments(
+                      payments,
+                      customer.id
+                    );
 
-                  <div className="customer-info">
-                    <h3>
-                      {customer.name}
-                    </h3>
+                  const outstanding =
+                    Math.max(
+                      0,
+                      (Number(
+                        customer.previousBalance
+                      ) || 0) +
+                        billed -
+                        paid
+                    );
 
-                    <div className="customer-details">
-                      {customer.phone && (
-                        <span>
-                          📞{" "}
-                          {customer.phone}
-                        </span>
-                      )}
+                  return (
+                    <div
+                      className="customer-card"
+                      key={
+                        customer.id
+                      }
+                      ref={(element) => {
+                        const id =
+                          String(
+                            customer.id
+                          );
 
-                      {customer.address && (
-                        <span>
-                          📍{" "}
-                          {customer.address}
-                        </span>
-                      )}
+                        if (element) {
+                          customerRefs.current.set(
+                            id,
+                            element
+                          );
+                        } else {
+                          customerRefs.current.delete(
+                            id
+                          );
+                        }
+                      }}
+                      onClick={() =>
+                        openCustomerDetails(
+                          customer.id
+                        )
+                      }
+                      style={{
+                        cursor:
+                          "pointer",
+                      }}
+                    >
+                      <div className="customer-avatar">
+                        {getInitials(
+                          customer.name
+                        )}
+                      </div>
 
-                      <span>
-                        🚚{" "}
-                        {
-                          customerDeliveries.length
-                        }{" "}
-                        deliveries
-                      </span>
+                      <div className="customer-info">
+                        <h3>
+                          {customer.name}
+                        </h3>
 
-                      <span>
-                        💰 Rs.{" "}
-                        {formatMoney(
-                          outstanding
-                        )}{" "}
-                        due
-                      </span>
+                        <div className="customer-details">
+                          {customer.phone && (
+                            <span>
+                              📞{" "}
+                              {
+                                customer.phone
+                              }
+                            </span>
+                          )}
+
+                          {customer.address && (
+                            <span>
+                              📍{" "}
+                              {
+                                customer.address
+                              }
+                            </span>
+                          )}
+
+                          <span>
+                            🚚{" "}
+                            {
+                              customerDeliveries.length
+                            }{" "}
+                            deliveries
+                          </span>
+
+                          <span>
+                            💰 Rs.{" "}
+                            {formatMoney(
+                              outstanding
+                            )}{" "}
+                            due
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="customer-actions">
+                        <button
+                          type="button"
+                          className="edit-button"
+                          title="Edit customer"
+                          onClick={(
+                            event
+                          ) => {
+                            event.stopPropagation();
+
+                            openEdit(
+                              customer
+                            );
+                          }}
+                        >
+                          ✏️
+                        </button>
+
+                        <button
+                          type="button"
+                          className="delete-button"
+                          title="Delete customer"
+                          onClick={(
+                            event
+                          ) => {
+                            event.stopPropagation();
+
+                            handleDelete(
+                              customer
+                            );
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* =======================================
-                      ACTIONS
-                      ======================================= */}
-
-                  <div className="customer-actions">
-                    <button
-                      type="button"
-                      className="edit-button"
-                      title="Edit customer"
-                      onClick={(
-                        event
-                      ) => {
-                        event.stopPropagation();
-                        openEdit(
-                          customer
-                        );
-                      }}
-                    >
-                      ✏️
-                    </button>
-
-                    <button
-                      type="button"
-                      className="delete-button"
-                      title="Delete customer"
-                      onClick={(
-                        event
-                      ) => {
-                        event.stopPropagation();
-                        handleDelete(
-                          customer
-                        );
-                      }}
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              );
-            }
+                  );
+                }
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </>
   );
