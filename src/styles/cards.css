@@ -1,0 +1,236 @@
+/* =========================================================
+   AQUAFLOW - CARDS & LISTS
+   ========================================================= */
+
+.customers-list,
+.deliveries-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 12px;
+}
+
+/* =========================================================
+   CUSTOMER CARD
+   ========================================================= */
+
+.customer-card {
+  width: 100%;
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  padding: 17px 18px;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+
+  box-shadow:
+    0 2px 7px rgba(15, 23, 42, 0.035);
+
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.customer-card:hover {
+  transform: translateY(-1px);
+
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.customer-avatar {
+  width: 46px;
+  height: 46px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #e0f2fe;
+  color: #0369a1;
+
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.customer-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.customer-info h3 {
+  margin: 0 0 7px;
+
+  color: #0f172a;
+
+  font-size: 15px;
+  font-weight: 800;
+
+  word-break: break-word;
+}
+
+.customer-details {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  gap: 7px 15px;
+
+  color: #64748b;
+
+  font-size: 12px;
+}
+
+.customer-details span {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 3px;
+}
+
+.customer-actions {
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  flex-shrink: 1;
+
+  flex-wrap: wrap;
+}
+
+/* =========================================================
+   EDIT / DELETE BUTTONS
+   ========================================================= */
+
+.edit-button,
+.delete-button {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 8px;
+
+  font-size: 15px;
+}
+
+.edit-button {
+  border: 1px solid #bae6fd;
+
+  background: #f0f9ff;
+}
+
+.edit-button:hover {
+  background: #e0f2fe;
+}
+
+.delete-button {
+  border: 1px solid #fecaca;
+
+  background: #fef2f2;
+}
+
+.delete-button:hover {
+  background: #fee2e2;
+}
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.empty-state {
+  padding: 55px 25px;
+
+  text-align: center;
+
+  background: #ffffff;
+
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+}
+
+.empty-icon {
+  margin-bottom: 10px;
+
+  font-size: 38px;
+}
+
+.empty-state h3 {
+  margin: 0 0 7px;
+
+  color: #0f172a;
+
+  font-size: 17px;
+}
+
+.empty-state p {
+  max-width: 430px;
+
+  margin: 0 auto 18px;
+
+  color: #64748b;
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   COMING SOON / INFO
+   ========================================================= */
+
+.coming-soon {
+  padding: 30px;
+
+  text-align: center;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.035);
+}
+
+.coming-soon-icon {
+  margin-bottom: 8px;
+
+  font-size: 32px;
+}
+
+.coming-soon h3 {
+  margin: 0 0 7px;
+
+  color: #0f172a;
+
+  font-size: 18px;
+}
+
+.coming-soon p {
+  max-width: 600px;
+
+  margin: 0 auto;
+
+  color: #64748b;
+
+  font-size: 13px;
+  line-height: 1.6;
+}

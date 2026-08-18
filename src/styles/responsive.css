@@ -1,0 +1,727 @@
+/* =========================================================
+   AQUAFLOW - RESPONSIVE / MOBILE / TABLET
+   ========================================================= */
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 1100px) {
+  .dashboard-cards {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .delivery-total-preview {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =========================================================
+   MOBILE NAVIGATION + TABLET
+   ========================================================= */
+
+@media (max-width: 800px) {
+  .app-header {
+    height: 64px;
+
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .app-layout {
+    min-height: calc(100vh - 64px);
+    min-height: calc(100dvh - 64px);
+  }
+
+  .main-content {
+    padding: 20px 15px;
+  }
+
+  .header-logo h1 {
+    font-size: 18px;
+  }
+
+  .header-logo small {
+    display: none;
+  }
+
+  .page-header {
+    align-items: flex-start;
+  }
+
+  .page-header h2 {
+    font-size: 22px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group-full {
+    grid-column: auto;
+  }
+
+  .delivery-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 768px) {
+  /* -------------------------------------------------------
+     HEADER
+     ------------------------------------------------------- */
+
+  .app-header {
+    height: 62px;
+
+    padding:
+      0
+      max(12px, env(safe-area-inset-right))
+      0
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .hamburger-button {
+    display: flex;
+  }
+
+  .header-logo {
+    gap: 8px;
+  }
+
+  .header-logo > span {
+    width: 36px;
+    height: 36px;
+
+    border-radius: 10px;
+
+    font-size: 19px;
+  }
+
+  .header-logo h1 {
+    font-size: 17px;
+  }
+
+  .header-logo small {
+    display: block;
+
+    font-size: 9px;
+  }
+
+  .logout-button {
+    min-height: 36px;
+
+    padding: 0 10px;
+
+    font-size: 12px;
+  }
+
+  /* -------------------------------------------------------
+     LAYOUT
+     ------------------------------------------------------- */
+
+  .app-layout {
+    min-height: calc(100dvh - 62px);
+  }
+
+  .main-content {
+    width: 100%;
+
+    padding: 14px 12px;
+  }
+
+  .page {
+    max-width: none;
+  }
+
+  /* -------------------------------------------------------
+     SIDEBAR DRAWER
+     ------------------------------------------------------- */
+
+  .sidebar {
+    position: fixed;
+
+    top: 0;
+    left: 0;
+
+    z-index: 2000;
+
+    width: min(82vw, 280px);
+    height: 100dvh;
+
+    transform: translateX(-105%);
+
+    transition: transform 0.2s ease;
+
+    overflow-y: auto;
+
+    box-shadow:
+      8px 0 30px rgba(15, 23, 42, 0.14);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    min-height: 62px;
+
+    padding: 0 14px;
+
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .sidebar-overlay {
+    display: block;
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 1999;
+
+    width: 100%;
+    height: 100%;
+
+    border: 0;
+
+    background: rgba(15, 23, 42, 0.35);
+  }
+
+  .sidebar nav {
+    padding: 10px;
+  }
+
+  .sidebar nav button {
+    min-height: 44px;
+
+    padding: 0 12px;
+
+    font-size: 14px;
+  }
+
+  /* -------------------------------------------------------
+     PAGE HEADER
+     ------------------------------------------------------- */
+
+  .page-header {
+    margin-bottom: 14px;
+  }
+
+  .page-header h2 {
+    font-size: 19px;
+  }
+
+  .page-header .welcome {
+    font-size: 12px;
+  }
+
+  /* -------------------------------------------------------
+     DASHBOARD
+     ------------------------------------------------------- */
+
+  .dashboard-cards {
+    gap: 8px;
+  }
+
+  .dashboard-card {
+    min-height: 86px;
+
+    padding: 12px;
+
+    border-radius: 12px;
+  }
+
+  .dashboard-card .card-icon {
+    width: 38px;
+    height: 38px;
+
+    margin-bottom: 8px;
+
+    font-size: 19px;
+  }
+
+  .dashboard-card h3 {
+    margin: 5px 0 2px;
+
+    font-size: 12px;
+  }
+
+  .dashboard-card p {
+    font-size: 15px;
+  }
+
+  /* -------------------------------------------------------
+     GENERAL CARDS
+     ------------------------------------------------------- */
+
+  .customer-form-card,
+  .coming-soon {
+    padding: 14px;
+
+    border-radius: 12px;
+  }
+
+  .form-header {
+    margin-bottom: 14px;
+  }
+
+  .form-header h3 {
+    font-size: 15px;
+  }
+
+  .form-header p {
+    font-size: 12px;
+  }
+
+  /* -------------------------------------------------------
+     FORMS
+     ------------------------------------------------------- */
+
+  .form-grid {
+    gap: 10px;
+  }
+
+  .form-group {
+    gap: 5px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    min-height: 42px;
+
+    padding: 9px 10px;
+
+    font-size: 13px;
+
+    border-radius: 9px;
+  }
+
+  .form-group textarea {
+    min-height: 80px;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .delete-button,
+  .edit-button {
+    min-height: 38px;
+
+    padding: 8px 11px;
+
+    font-size: 12px;
+
+    border-radius: 8px;
+  }
+
+  .form-actions {
+    gap: 7px;
+
+    margin-top: 14px;
+  }
+
+  /* -------------------------------------------------------
+     CUSTOMER LIST
+     ------------------------------------------------------- */
+
+  .customer-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  .search-box input {
+    min-height: 40px;
+
+    font-size: 13px;
+  }
+
+  .customer-count {
+    text-align: right;
+  }
+
+  .customer-card {
+    align-items: flex-start;
+
+    padding: 11px;
+
+    flex-wrap: wrap;
+
+    border-radius: 11px;
+  }
+
+  .customer-info {
+    width: calc(100% - 60px);
+  }
+
+  .customer-info h3 {
+    font-size: 13px;
+  }
+
+  .customer-details {
+    gap: 5px;
+
+    font-size: 11px;
+  }
+
+  .customer-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .customer-actions {
+    width: 100%;
+
+    justify-content: flex-end;
+
+    gap: 5px;
+
+    padding-left: 48px;
+  }
+
+  /* -------------------------------------------------------
+     DELIVERY SUMMARY
+     ------------------------------------------------------- */
+
+  .delivery-summary {
+    gap: 8px;
+  }
+
+  .summary-card {
+    padding: 10px;
+
+    border-radius: 10px;
+  }
+
+  .summary-card > span {
+    width: 36px;
+    height: 36px;
+
+    font-size: 18px;
+  }
+
+  .summary-card strong {
+    font-size: 14px;
+  }
+
+  /* -------------------------------------------------------
+     DELIVERY CARD
+     ------------------------------------------------------- */
+
+  .delivery-card {
+    width: 100%;
+    min-width: 0;
+
+    flex-direction: column;
+
+    align-items: stretch;
+
+    gap: 12px;
+
+    padding: 11px;
+
+    border-radius: 11px;
+  }
+
+  .delivery-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .delivery-icon {
+    width: 38px;
+    height: 38px;
+
+    font-size: 18px;
+  }
+
+  .delivery-info {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .delivery-title-row h3 {
+    font-size: 13px;
+  }
+
+  .delivery-details {
+    gap: 5px;
+
+    font-size: 11px;
+  }
+
+  .delivery-right {
+    width: 100%;
+    min-width: 0;
+
+    flex-direction: column;
+
+    align-items: stretch;
+    justify-content: flex-start;
+
+    gap: 8px;
+
+    padding-top: 10px;
+
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .delivery-right > strong,
+  .delivery-right > small {
+    width: 100%;
+
+    text-align: left;
+  }
+
+  .delivery-right > strong {
+    font-size: 14px;
+  }
+
+  .delivery-right .customer-actions {
+    width: 100%;
+    min-width: 0;
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: stretch;
+    justify-content: flex-start;
+
+    gap: 7px;
+
+    padding-left: 0;
+  }
+
+  .delivery-right .customer-actions > button {
+    min-width: 0;
+
+    white-space: normal;
+
+    flex: 1 1 110px;
+  }
+
+  .delivery-right .customer-actions .edit-button,
+  .delivery-right .customer-actions .delete-button {
+    flex: 0 0 38px;
+
+    width: 38px;
+    min-width: 38px;
+
+    padding: 0;
+  }
+
+  /* -------------------------------------------------------
+     DELIVERY TOTAL
+     ------------------------------------------------------- */
+
+  .delivery-total-preview {
+    grid-template-columns: 1fr;
+
+    padding: 10px;
+
+    gap: 8px;
+  }
+
+  /* -------------------------------------------------------
+     CUSTOMER PICKER
+     ------------------------------------------------------- */
+
+  .selected-customer {
+    align-items: flex-start;
+  }
+
+  .change-customer-button {
+    margin-left: auto;
+  }
+
+  /* -------------------------------------------------------
+     EMPTY / INFO
+     ------------------------------------------------------- */
+
+  .empty-state {
+    padding: 28px 14px;
+  }
+
+  .empty-state h3 {
+    font-size: 15px;
+  }
+
+  .empty-state p {
+    font-size: 12px;
+  }
+
+  .coming-soon-icon {
+    font-size: 28px;
+  }
+
+  /* -------------------------------------------------------
+     MOBILE FORM ACTIONS
+     ------------------------------------------------------- */
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+
+  /* -------------------------------------------------------
+     PIN
+     ------------------------------------------------------- */
+
+  .pin-card {
+    padding: 28px 18px;
+  }
+
+  .number-pad {
+    gap: 8px;
+  }
+
+  .number-pad button {
+    height: 52px;
+  }
+}
+
+/* =========================================================
+   SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 420px) {
+  .main-content {
+    padding: 12px 8px;
+  }
+
+  .customer-details,
+  .delivery-details {
+    flex-direction: column;
+    align-items: flex-start;
+
+    gap: 5px;
+  }
+
+  .header-logo h1 {
+    max-width: 135px;
+  }
+
+  .logout-button {
+    padding: 0 8px;
+  }
+
+  .sidebar {
+    width: min(88vw, 280px);
+  }
+}
+
+/* =========================================================
+   TOUCH DEVICES
+   ========================================================= */
+
+@media (hover: none) and (pointer: coarse) {
+  .dashboard-card:hover,
+  .customer-card:hover,
+  .delivery-card:hover {
+    transform: none;
+
+    box-shadow:
+      0 2px 8px rgba(15, 23, 42, 0.04);
+  }
+
+  .primary-button:hover,
+  .secondary-button:hover,
+  .logout-button:hover,
+  .edit-button:hover,
+  .delete-button:hover,
+  .preset-button:hover,
+  .customer-picker-trigger:hover,
+  .customer-picker-item:hover {
+    background: inherit;
+  }
+
+  .customer-picker-list {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+
+    transition-duration: 0.01ms !important;
+
+    animation-duration: 0.01ms !important;
+
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* =========================================================
+   PRINT
+   ========================================================= */
+
+@media print {
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  .app-header,
+  .sidebar,
+  .sidebar-overlay,
+  .hamburger-button,
+  .primary-button,
+  .secondary-button,
+  .customer-actions,
+  .form-actions {
+    display: none !important;
+  }
+
+  .app-layout {
+    display: block;
+
+    min-height: auto;
+  }
+
+  .main-content {
+    padding: 0;
+  }
+
+  .page {
+    max-width: none;
+  }
+
+  .customer-form-card,
+  .customer-card,
+  .delivery-card,
+  .dashboard-card {
+    box-shadow: none;
+
+    break-inside: avoid;
+  }
+}

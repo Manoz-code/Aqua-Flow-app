@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import "./App.css";
+import "./styles/index.css";
 
 import { createId } from "./utils/format";
 
@@ -28,6 +28,7 @@ export default function App() {
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [activePage, setActivePage] = useState("Dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentPin, setCurrentPin] = useState(getStoredPin);
   const [recoveryCode, setRecoveryCode] = useState(getStoredRecoveryCode);
 
@@ -192,30 +193,56 @@ const [paymentFormCustomerId, setPaymentFormCustomerId] = useState(null);
     }));
   }, []);
 
-  useEffect(() => {
-    window.history.replaceState({ page: "Dashboard" }, "");
+useEffect(() => {
+  window.history.replaceState(
+    { page: "Dashboard", aquaflow: true },
+    "",
+    window.location.href
+  );
 
-    const handlePopState = (event) => {
-      const page = event.state?.page || "Dashboard";
-      setActivePage(page);
-    };
+  const handlePopState = (event) => {
+    const page = event.state?.aquaflow
+      ? event.state.page
+      : "Dashboard";
 
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+    // Back navigation should never reuse an old quick-action customer.
+    setDeliveryFormCustomerId(null);
+    setPaymentFormCustomerId(null);
 
-  const navigateTo = useCallback((page) => {
-    setActivePage((current) => {
-      if (current !== page) {
-        window.history.pushState({ page }, "");
-      }
-      return page;
-    });
-  }, []);
+    setActivePage(page);
+  };
 
-  const handleNavigate = useCallback((page) => {
+  window.addEventListener("popstate", handlePopState);
+
+  return () => {
+    window.removeEventListener("popstate", handlePopState);
+  };
+}, []);
+
+const navigateTo = useCallback((page) => {
+  setActivePage((current) => {
+    if (current === page) return current;
+
+    window.history.pushState(
+      { page, aquaflow: true },
+      "",
+      window.location.href
+    );
+
+    return page;
+  });
+}, []);
+
+const handleNavigate = useCallback(
+  (page) => {
+    setDeliveryFormCustomerId(null);
+    setPaymentFormCustomerId(null);
+    setSidebarOpen(false);
+
     navigateTo(page);
-  }, [navigateTo]);
+  },
+  [navigateTo]
+);
 
   const handleQuickNewDelivery = useCallback(() => {
     navigateTo("Deliveries");
@@ -338,21 +365,52 @@ const [paymentFormCustomerId, setPaymentFormCustomerId] = useState(null);
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="header-logo">
-          <span>💧</span>
-          <div>
-            <h1>AquaFlow</h1>
-            <small>Offline Water Management</small>
-          </div>
-        </div>
-        <button type="button" className="logout-button" onClick={handleLock}>
-          🔒 Lock
-        </button>
-      </header>
+    <header className="app-header">
+  <div className="header-left">
+    <button
+      type="button"
+      className="hamburger-button"
+      aria-label="Open navigation"
+      aria-expanded={sidebarOpen}
+      onClick={() => setSidebarOpen((current) => !current)}
+    >
+      ☰
+    </button>
+
+    <div className="header-logo">
+      <span>💧</span>
+      <div>
+        <h1>AquaFlow</h1>
+        <small>Offline Water Management</small>
+      </div>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    className="logout-button"
+    onClick={handleLock}
+  >
+    🔒 Lock
+  </button>
+</header>
 
       <div className="app-layout">
-        <Sidebar activePage={activePage} onNavigate={handleNavigate} />
+  {sidebarOpen && (
+    <button
+      type="button"
+      className="sidebar-overlay"
+      aria-label="Close navigation"
+      onClick={() => setSidebarOpen(false)}
+    />
+  )}
+
+  <Sidebar
+    activePage={activePage}
+    onNavigate={handleNavigate}
+    isOpen={sidebarOpen}
+    onClose={() => setSidebarOpen(false)}
+  />
         <main className="main-content">
           <div className="page">{renderPage()}</div>
         </main>

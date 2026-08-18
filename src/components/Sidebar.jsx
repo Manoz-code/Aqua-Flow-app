@@ -1,10 +1,11 @@
 import { memo } from "react";
 
-/* =========================================================
-   SIDEBAR
-   ========================================================= */
-
-const Sidebar = memo(function Sidebar({ activePage, onNavigate }) {
+const Sidebar = memo(function Sidebar({
+  activePage,
+  onNavigate,
+  isOpen,
+  onClose,
+}) {
   const items = [
     ["Dashboard", "📊"],
     ["Customers", "👥"],
@@ -15,7 +16,20 @@ const Sidebar = memo(function Sidebar({ activePage, onNavigate }) {
   ];
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? "sidebar-open" : ""}`}>
+      <div className="sidebar-header">
+        <strong>Menu</strong>
+
+        <button
+          type="button"
+          className="sidebar-close-button"
+          aria-label="Close navigation"
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
+
       <nav>
         {items.map(([name, icon]) => (
           <button

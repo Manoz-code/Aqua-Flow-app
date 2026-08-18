@@ -1,0 +1,133 @@
+/* =========================================================
+   AQUAFLOW - NAVIGATION
+   ========================================================= */
+
+.sidebar {
+  width: 235px;
+
+  flex-shrink: 0;
+
+  background: #ffffff;
+
+  border-right: 1px solid #e2e8f0;
+
+  padding: 20px 14px;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+
+  gap: 6px;
+}
+
+.sidebar nav button {
+  width: 100%;
+  min-height: 46px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 0 14px;
+
+  border: 0;
+  border-radius: 10px;
+
+  background: transparent;
+  color: #64748b;
+
+  text-align: left;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.sidebar nav button span {
+  width: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  font-size: 18px;
+}
+
+.sidebar nav button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.sidebar nav button.active {
+  background: #e0f2fe;
+  color: #0369a1;
+
+  font-weight: 750;
+}
+
+.sidebar nav button.active span {
+  transform: scale(1.05);
+}
+
+/* =========================================================
+   MOBILE NAVIGATION ELEMENTS
+   ========================================================= */
+
+.hamburger-button {
+  display: none;
+
+  width: 42px;
+  height: 42px;
+
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: #0f172a;
+
+  font-size: 22px;
+  line-height: 1;
+}
+
+.sidebar-header {
+  display: none;
+}
+
+.sidebar-close-button {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  border-radius: 8px;
+
+  background: transparent;
+  color: #64748b;
+
+  font-size: 24px;
+  line-height: 1;
+}
+
+.sidebar-close-button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.sidebar-overlay {
+  display: none;
+}

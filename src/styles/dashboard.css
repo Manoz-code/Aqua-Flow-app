@@ -1,0 +1,97 @@
+/* =========================================================
+   AQUAFLOW - DASHBOARD
+   ========================================================= */
+
+.dashboard-cards {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 16px;
+
+  margin-bottom: 24px;
+}
+
+.dashboard-card {
+  min-width: 0;
+
+  padding: 20px;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.04);
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 8px 20px rgba(15, 23, 42, 0.07);
+}
+
+.card-icon {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 14px;
+
+  border-radius: 11px;
+
+  background: #f0f9ff;
+
+  font-size: 20px;
+}
+
+.dashboard-card h3 {
+  margin: 0 0 7px;
+
+  color: #64748b;
+
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.dashboard-card p {
+  margin: 0;
+
+  color: #0f172a;
+
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 800;
+
+  word-break: break-word;
+}
+
+.dashboard-card-clickable {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.dashboard-card-clickable:hover,
+.dashboard-card-clickable:focus-visible {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.08);
+
+  outline: none;
+}
+
+.dashboard-card-clickable:active {
+  transform: translateY(0);
+}
