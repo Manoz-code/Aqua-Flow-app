@@ -1,0 +1,638 @@
+import { useState } from "react";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { normalizeData } from "../utils/data";
+
+/* =========================================================
+   SETTINGS
+   ========================================================= */
+
+function Settings({
+  data,
+  setData,
+  currentPin,
+  setCurrentPin,
+  recoveryCode,
+  setRecoveryCode,
+}) {
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("success");
+
+  const [oldPin, setOldPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [newRecoveryCode, setNewRecoveryCode] = useState("");
+
+  const showMessage = (text, type = "success") => {
+    setMessage(text);
+    setMessageType(type);
+  };
+
+  /* =========================================================
+     BACKUP HELPERS
+     ========================================================= */
+
+  const createBackupFilename = () => {
+    const now = new Date();
+
+    const pad = (value) => String(value).padStart(2, "0");
+
+    const timestamp =
+      `${now.getFullYear()}-` +
+      `${pad(now.getMonth() + 1)}-` +
+      `${pad(now.getDate())}-` +
+      `${pad(now.getHours())}-` +
+      `${pad(now.getMinutes())}-` +
+      `${pad(now.getSeconds())}`;
+
+    return `AquaFlow-Backup-${timestamp}.json`;
+  };
+
+  const isValidBackupData = (backupData) => {
+    if (!backupData || typeof backupData !== "object") {
+      return false;
+    }
+
+    if (!Array.isArray(backupData.customers)) {
+      return false;
+    }
+
+    if (!Array.isArray(backupData.deliveries)) {
+      return false;
+    }
+
+    if (!Array.isArray(backupData.payments)) {
+      return false;
+    }
+
+    return true;
+  };
+
+/* =========================================================
+   EXPORT BACKUP
+   ========================================================= */
+
+const handleExport = async () => {
+  try {
+    const backup = {
+      app: "AquaFlow",
+      backupType: "full",
+      version: 4,
+      exportedAt: new Date().toISOString(),
+
+      data: {
+        customers: data.customers || [],
+        deliveries: data.deliveries || [],
+        payments: data.payments || [],
+      },
+    };
+
+    // Create JSON and validate it before writing.
+    const json = JSON.stringify(backup, null, 2);
+    JSON.parse(json);
+
+    const fileName = createBackupFilename();
+
+    /*
+     * Create:
+     *
+     * Documents/
+     *   AquaFlow/
+     *     Backups/
+     *
+     * The directory can already exist, so we safely ignore
+     * the "already exists" error.
+     */
+    await Filesystem.mkdir({
+      path: "AquaFlow/Backups",
+      directory: Directory.Documents,
+      recursive: true,
+    }).catch(() => {});
+
+    // Write the actual backup file.
+    await Filesystem.writeFile({
+      path: `AquaFlow/Backups/${fileName}`,
+      data: json,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+      recursive: true,
+    });
+
+    showMessage(
+      `✅ Backup created successfully: ${fileName}`
+    );
+
+    console.log("AquaFlow backup created:", fileName);
+  } catch (error) {
+    console.error("Backup export failed:", error);
+
+    showMessage(
+      "Backup could not be created. Your existing data was not changed.",
+      "error"
+    );
+  }
+};
+
+  /* =========================================================
+     IMPORT BACKUP
+     ========================================================= */
+
+  const handleImport = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.name.toLowerCase().endsWith(".json")) {
+      showMessage("Please select a valid AquaFlow JSON backup.", "error");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result);
+
+        /*
+         * New AquaFlow backup format
+         */
+        if (
+          parsed?.app !== "AquaFlow" ||
+          parsed?.backupType !== "full" ||
+          !parsed?.data
+        ) {
+          /*
+           * Keep support for older AquaFlow backups.
+           */
+          if (!parsed?.data) {
+            throw new Error("Invalid AquaFlow backup format.");
+          }
+        }
+
+        const importedData = parsed?.data
+          ? normalizeData(parsed.data)
+          : normalizeData(parsed);
+
+        if (!isValidBackupData(importedData)) {
+          throw new Error("Backup data is incomplete.");
+        }
+
+        const exportedAt = parsed?.exportedAt
+          ? new Date(parsed.exportedAt)
+          : null;
+
+        let backupDateText = "unknown date";
+
+        if (
+          exportedAt &&
+          !Number.isNaN(exportedAt.getTime())
+        ) {
+          backupDateText = exportedAt.toLocaleString();
+        }
+
+        const confirmed = window.confirm(
+          `Restore this AquaFlow backup?\n\n` +
+            `Backup date: ${backupDateText}\n` +
+            `Customers: ${importedData.customers.length}\n` +
+            `Deliveries: ${importedData.deliveries.length}\n` +
+            `Payments: ${importedData.payments.length}\n\n` +
+            `WARNING: Your current local data will be replaced. ` +
+            `Make a backup of your current data first if you may need it.\n\n` +
+            `Continue?`
+        );
+
+        if (!confirmed) {
+          showMessage("Backup restore cancelled.");
+          return;
+        }
+
+        /*
+         * IMPORTANT:
+         * Only replace data AFTER the backup has been
+         * successfully parsed and validated.
+         */
+        setData(importedData);
+
+        showMessage(
+          "Backup restored successfully. Your AquaFlow data has been updated."
+        );
+      } catch (error) {
+        console.error("Backup import failed:", error);
+
+        showMessage(
+          "Invalid or corrupted AquaFlow backup. Your existing data was not changed.",
+          "error"
+        );
+      }
+
+      event.target.value = "";
+    };
+
+    reader.onerror = () => {
+      showMessage(
+        "Could not read the backup file. Your existing data was not changed.",
+        "error"
+      );
+
+      event.target.value = "";
+    };
+
+    reader.readAsText(file);
+  };
+
+  /* =========================================================
+     CHANGE PIN
+     ========================================================= */
+
+  const handleChangePin = (event) => {
+    event.preventDefault();
+
+    if (oldPin !== currentPin) {
+      showMessage("Current PIN is incorrect.", "error");
+      return;
+    }
+
+    if (!/^\d{4}$/.test(newPin)) {
+      showMessage(
+        "New PIN must contain exactly 4 digits.",
+        "error"
+      );
+      return;
+    }
+
+    if (newPin !== confirmPin) {
+      showMessage("New PINs do not match.", "error");
+      return;
+    }
+
+    setCurrentPin(newPin);
+
+    setOldPin("");
+    setNewPin("");
+    setConfirmPin("");
+
+    showMessage("PIN changed successfully.");
+  };
+
+  /* =========================================================
+     CHANGE RECOVERY CODE
+     ========================================================= */
+
+  const handleChangeRecoveryCode = (event) => {
+    event.preventDefault();
+
+    const code = newRecoveryCode.trim();
+
+    if (code.length < 6) {
+      showMessage(
+        "Recovery code must contain at least 6 characters.",
+        "error"
+      );
+      return;
+    }
+
+    setRecoveryCode(code);
+    setNewRecoveryCode("");
+
+    showMessage("Recovery code updated successfully.");
+  };
+
+  /* =========================================================
+     CLEAR DATA
+     ========================================================= */
+
+  const handleClear = () => {
+    const confirmed = window.confirm(
+      "This will permanently remove all customers, deliveries and payments from this device.\n\nAre you sure you want to continue?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setData({
+      customers: [],
+      deliveries: [],
+      payments: [],
+    });
+
+    showMessage("All local data has been cleared.");
+  };
+
+  return (
+    <>
+      {/* ===================================================
+          PAGE HEADER
+          =================================================== */}
+
+      <div className="page-header">
+        <div>
+          <h2>Settings</h2>
+          <p className="welcome">
+            Manage your offline AquaFlow data and security
+          </p>
+        </div>
+      </div>
+
+      {/* ===================================================
+          SECURITY
+          =================================================== */}
+
+      <div className="customer-form-card">
+        <div className="form-header">
+          <div>
+            <h3>🔐 Security</h3>
+            <p>
+              Change your PIN and recovery code.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleChangePin}>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Current PIN</label>
+
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={oldPin}
+                onChange={(event) =>
+                  setOldPin(
+                    event.target.value.replace(/\D/g, "")
+                  )
+                }
+                placeholder="Current PIN"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>New PIN</label>
+
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={newPin}
+                onChange={(event) =>
+                  setNewPin(
+                    event.target.value.replace(/\D/g, "")
+                  )
+                }
+                placeholder="4-digit PIN"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Confirm New PIN</label>
+
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={confirmPin}
+                onChange={(event) =>
+                  setConfirmPin(
+                    event.target.value.replace(/\D/g, "")
+                  )
+                }
+                placeholder="Confirm PIN"
+              />
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button
+              type="submit"
+              className="primary-button"
+            >
+              🔑 Change PIN
+            </button>
+          </div>
+        </form>
+
+        <hr
+          style={{
+            margin: "25px 0",
+            border: 0,
+            borderTop: "1px solid #e5e7eb",
+          }}
+        />
+
+        <form onSubmit={handleChangeRecoveryCode}>
+          <div className="form-group">
+            <label>New Recovery Code</label>
+
+            <input
+              value={newRecoveryCode}
+              onChange={(event) =>
+                setNewRecoveryCode(event.target.value)
+              }
+              placeholder="Enter a recovery code"
+            />
+
+            <small className="input-help">
+              Keep this code somewhere safe. You need it
+              if you forget your PIN.
+            </small>
+          </div>
+
+          <div className="form-actions">
+            <button
+              type="submit"
+              className="primary-button"
+            >
+              🔐 Change Recovery Code
+            </button>
+          </div>
+        </form>
+
+        <div
+          style={{
+            marginTop: 15,
+            padding: 12,
+            borderRadius: 10,
+            background: "#f8fafc",
+          }}
+        >
+          <strong>Forgot PIN?</strong>
+
+          <p
+            style={{
+              margin: "5px 0 0",
+              fontSize: 13,
+            }}
+          >
+            From the lock screen, select{" "}
+            <strong>"Forgot PIN?"</strong> and enter your
+            recovery code.
+          </p>
+        </div>
+      </div>
+
+      {/* ===================================================
+          BACKUP
+          =================================================== */}
+
+      <div className="customer-form-card">
+        <div className="form-header">
+          <div>
+            <h3>💾 Data Backup</h3>
+
+            <p>
+              Safely export your AquaFlow data and restore
+              it when needed.
+            </p>
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: 14,
+            marginBottom: 15,
+            borderRadius: 10,
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <strong>Backup includes</strong>
+
+          <div
+            className="customer-details"
+            style={{ marginTop: 8 }}
+          >
+            <span>
+              👥 {data.customers.length} customers
+            </span>
+
+            <span>
+              🚚 {data.deliveries.length} deliveries
+            </span>
+
+            <span>
+              💰 {data.payments.length} payments
+            </span>
+          </div>
+
+          <p
+            style={{
+              margin: "10px 0 0",
+              fontSize: 12,
+              color: "#64748b",
+            }}
+          >
+            🔒 Your PIN and recovery code are never included
+            in the backup file.
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            type="button"
+            className="primary-button"
+            onClick={handleExport}
+          >
+            ⬇️ Export Backup
+          </button>
+
+          <label className="secondary-button">
+            ⬆️ Import Backup
+
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={handleImport}
+              style={{ display: "none" }}
+            />
+          </label>
+        </div>
+
+        {message && (
+          <p
+            style={{
+              marginTop: 15,
+              color:
+                messageType === "error"
+                  ? "#dc2626"
+                  : "#0369a1",
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            {message}
+          </p>
+        )}
+      </div>
+
+      {/* ===================================================
+          STORAGE
+          =================================================== */}
+
+      <div className="customer-form-card">
+        <div className="form-header">
+          <div>
+            <h3>💽 Storage</h3>
+
+            <p>
+              AquaFlow currently stores its data locally
+              on this device.
+            </p>
+          </div>
+        </div>
+
+        <div className="customer-details">
+          <span>
+            👥 {data.customers.length} customers
+          </span>
+
+          <span>
+            🚚 {data.deliveries.length} deliveries
+          </span>
+
+          <span>
+            💰 {data.payments.length} payments
+          </span>
+        </div>
+      </div>
+
+      {/* ===================================================
+          DANGER ZONE
+          =================================================== */}
+
+      <div className="customer-form-card">
+        <div className="form-header">
+          <div>
+            <h3>⚠️ Danger Zone</h3>
+
+            <p>
+              Permanently delete all local AquaFlow data.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="delete-button"
+          style={{
+            width: "auto",
+            padding: "0 15px",
+          }}
+          onClick={handleClear}
+        >
+          🗑️ Clear All Data
+        </button>
+      </div>
+    </>
+  );
+}
+
+export default Settings;
