@@ -238,3 +238,76 @@
 .payment-history {
   margin-top: 25px;
 }
+
+
+.nepali-calendar-picker {
+  position: relative;
+}
+
+.nepali-calendar-trigger {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nepali-calendar-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nepali-calendar-trigger-icon {
+  flex: 0 0 auto;
+}
+
+.nepali-calendar-trigger-value {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nepali-calendar-trigger-arrow {
+  flex: 0 0 auto;
+}
+
+.nepali-calendar-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 1200;
+  width: min(100%, 360px);
+  max-width: calc(100vw - 30px);
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+}
+
+@media (max-width: 768px) {
+  .nepali-calendar-popup {
+    position: fixed;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(94vw, 360px);
+    max-width: 94vw;
+    max-height: calc(100dvh - 90px);
+    overflow: auto;
+  }
+
+  .nepali-calendar-trigger {
+    min-height: 38px;
+    padding: 7px 9px;
+    font-size: 12px;
+  }
+}

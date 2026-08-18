@@ -13,7 +13,7 @@ import {
 
 import { getDeliveryTotal } from "../utils/data";
 import DashboardCard from "../components/DashboardCard";
-import NepaliDateInput from "../components/NepaliDateInput";
+import NepaliCalendarPicker from "../components/NepaliCalendarPicker";
 
 /* =========================================================
    REPORTS
@@ -583,17 +583,17 @@ function Reports({
         </div>
 
         <div className="form-grid">
-          <NepaliDateInput
-            value={fromDate}
-            onChange={setFromDate}
-            label="From Date"
-          />
+      <NepaliCalendarPicker
+  value={fromDate}
+  onChange={setFromDate}
+  label="From Date"
+/>
 
-          <NepaliDateInput
-            value={toDate}
-            onChange={setToDate}
-            label="To Date"
-          />
+<NepaliCalendarPicker
+  value={toDate}
+  onChange={setToDate}
+  label="To Date"
+/>
         </div>
 
         <div className="form-actions">

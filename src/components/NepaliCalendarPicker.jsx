@@ -1,9 +1,6 @@
-
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  NepaliCalendar,
-} from "@sushill/react-nepali-calendar";
+import { NepaliCalendar } from "@sushill/react-nepali-calendar";
 
 import "react-day-picker/style.css";
 import "@sushill/react-nepali-calendar/styles.css";
@@ -13,15 +10,17 @@ import { formatNepaliDate } from "../utils/format";
 /* =========================================================
    NEPALI CALENDAR PICKER
 
-   External value:
+   Internal AquaFlow value:
      AD YYYY-MM-DD
 
-   Calendar:
-     Bikram Sambat / Nepali
+   User sees:
+     Bikram Sambat calendar
 
-   onChange:
-     Returns AD YYYY-MM-DD so existing AquaFlow
-     data and report filtering continue to work.
+   On selection:
+     Returns AD YYYY-MM-DD
+
+   Existing reports/data filtering therefore remains
+   unchanged.
    ========================================================= */
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -34,11 +33,10 @@ const toJsDate = (value) => {
     return undefined;
   }
 
-  const [year, month, day] =
-    String(value)
-      .slice(0, 10)
-      .split("-")
-      .map(Number);
+  const [year, month, day] = String(value)
+    .slice(0, 10)
+    .split("-")
+    .map(Number);
 
   const date = new Date(
     year,
@@ -58,7 +56,7 @@ const toJsDate = (value) => {
 };
 
 const toIsoDate = (date) => {
-  if (!(date instanceof Date)) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
     return "";
   }
 
@@ -79,11 +77,10 @@ function NepaliCalendarPicker({
   value = "",
   onChange,
   label = "Date",
-  placeholder = "Select Nepali date",
+  placeholder = "छान्नुहोस्",
   disabled = false,
 }) {
   const [open, setOpen] = useState(false);
-
   const wrapperRef = useRef(null);
 
   const selectedDate = useMemo(
@@ -92,7 +89,7 @@ function NepaliCalendarPicker({
   );
 
   /* =======================================================
-     CLOSE WHEN CLICKING OUTSIDE
+     CLOSE ON OUTSIDE CLICK
      ======================================================= */
 
   useEffect(() => {
@@ -103,9 +100,7 @@ function NepaliCalendarPicker({
     const handlePointerDown = (event) => {
       if (
         wrapperRef.current &&
-        !wrapperRef.current.contains(
-          event.target
-        )
+        !wrapperRef.current.contains(event.target)
       ) {
         setOpen(false);
       }
@@ -153,11 +148,11 @@ function NepaliCalendarPicker({
   }, [open]);
 
   /* =======================================================
-     DATE SELECTION
+     SELECT DATE
      ======================================================= */
 
   const handleSelect = (date) => {
-    if (!date) {
+    if (!(date instanceof Date)) {
       return;
     }
 
@@ -212,6 +207,9 @@ function NepaliCalendarPicker({
           <NepaliCalendar
             mode="single"
             selected={selectedDate}
+            {...(selectedDate
+              ? { defaultMonth: selectedDate }
+              : {})}
             onSelect={handleSelect}
             showGregorianDates={false}
           />
