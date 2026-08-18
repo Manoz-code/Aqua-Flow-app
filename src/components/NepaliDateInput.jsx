@@ -1,23 +1,109 @@
-import { useEffect, useMemo, useState } from "react";
-import NepaliDate from "nepali-date-converter";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import NepaliDateModule from "nepali-date-converter";
 
 /* =========================================================
    NEPALI DATE INPUT
 
-   External value:
+   Internal value:
      AD YYYY-MM-DD
 
-   Display:
-     BS YYYY-MM-DD using Nepali digits
+   User-visible value:
+     BS YYYY-MM-DD
 
-   The stored value remains AD so existing AquaFlow
-   data and date filtering continue to work.
+   Examples:
+
+     Stored:
+       2026-08-18
+
+     Displayed:
+       २०८३-०५-०२
+
+   The component accepts both English and Nepali digits.
+   Customer names and phone numbers are completely
+   unaffected by this component.
    ========================================================= */
 
-const AD_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+/* =========================================================
+   PACKAGE EXPORT COMPATIBILITY
+   ========================================================= */
 
-function formatBsValue(value) {
-  if (!value || !AD_DATE_PATTERN.test(value)) {
+const NepaliDate =
+  typeof NepaliDateModule === "function"
+    ? NepaliDateModule
+    : NepaliDateModule?.default;
+
+/* =========================================================
+   CONSTANTS
+   ========================================================= */
+
+const AD_DATE_PATTERN =
+  /^\d{4}-\d{2}-\d{2}$/;
+
+const BS_DATE_PATTERN =
+  /^\d{4}-\d{2}-\d{2}$/;
+
+const NEPALI_DIGITS =
+  "०१२३४५६७८९";
+
+/* =========================================================
+   DIGIT HELPERS
+   ========================================================= */
+
+const toEnglishDigits = (value = "") => {
+  return String(value).replace(
+    /[०-९]/g,
+    (digit) =>
+      String(
+        NEPALI_DIGITS.indexOf(digit)
+      )
+  );
+};
+
+const toNepaliDigits = (value = "") => {
+  return String(value).replace(
+    /\d/g,
+    (digit) =>
+      NEPALI_DIGITS[Number(digit)]
+  );
+};
+
+/* =========================================================
+   DATE HELPERS
+   ========================================================= */
+
+const isValidAdDate = (value) => {
+  if (!AD_DATE_PATTERN.test(value)) {
+    return false;
+  }
+
+  const [year, month, day] =
+    value.split("-").map(Number);
+
+  const date = new Date(
+    year,
+    month - 1,
+    day
+  );
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+};
+
+const formatBsValue = (value) => {
+  if (
+    !value ||
+    !AD_DATE_PATTERN.test(value) ||
+    !isValidAdDate(value)
+  ) {
     return "";
   }
 
@@ -26,10 +112,13 @@ function formatBsValue(value) {
       new Date(`${value}T00:00:00`)
     );
 
-    return nepaliDate.format(
-      "YYYY-MM-DD",
-      "np"
-    );
+    const formatted =
+      nepaliDate.format(
+        "YYYY-MM-DD",
+        "np"
+      );
+
+    return formatted;
   } catch (error) {
     console.error(
       "Failed to format Nepali date:",
@@ -38,113 +127,183 @@ function formatBsValue(value) {
 
     return "";
   }
-}
+};
 
-function getBsParts(value) {
-  if (!value || !AD_DATE_PATTERN.test(value)) {
+const convertBsToAd = (value) => {
+  const englishValue =
+    toEnglishDigits(value);
+
+  if (
+    !BS_DATE_PATTERN.test(
+      englishValue
+    )
+  ) {
     return null;
   }
 
   try {
     const nepaliDate = new NepaliDate(
-      new Date(`${value}T00:00:00`)
+      englishValue
     );
 
-    const bs = nepaliDate.getBS();
+    const jsDate =
+      nepaliDate.toJsDate();
 
-    return {
-      year: bs.year,
-      month: bs.month + 1,
-      date: bs.date,
-    };
+    if (!jsDate) {
+      return null;
+    }
+
+    const year =
+      jsDate.getFullYear();
+
+    const month = String(
+      jsDate.getMonth() + 1
+    ).padStart(2, "0");
+
+    const day = String(
+      jsDate.getDate()
+    ).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
   } catch {
     return null;
   }
-}
+};
+
+/* =========================================================
+   COMPONENT
+   ========================================================= */
 
 function NepaliDateInput({
   value = "",
   onChange,
   label = "Date",
   required = false,
-  min,
-  max,
   disabled = false,
 }) {
-  const initialBs = useMemo(
+  const formattedValue = useMemo(
     () => formatBsValue(value),
     [value]
   );
 
   const [displayValue, setDisplayValue] =
-    useState(initialBs);
+    useState(formattedValue);
+
+  const [invalid, setInvalid] =
+    useState(false);
+
+  /* =======================================================
+     SYNC WHEN PARENT VALUE CHANGES
+     ======================================================= */
 
   useEffect(() => {
-    setDisplayValue(formatBsValue(value));
+    setDisplayValue(
+      formatBsValue(value)
+    );
+
+    setInvalid(false);
   }, [value]);
 
+  /* =======================================================
+     INPUT CHANGE
+     ======================================================= */
+
   const handleChange = (event) => {
-    const nextValue = event.target.value;
+    const nextValue =
+      event.target.value;
 
     setDisplayValue(nextValue);
 
     /*
-     * The visible field is intentionally Nepali.
-     *
-     * We only emit a new AD value after the user enters
-     * a complete BS date.
-     *
-     * The package supports parsing Nepali date strings,
-     * so convert the completed BS date back to JS Date.
+     * Empty field
      */
-    const nepaliDigits =
-      "०१२३४५६७८९";
 
-    const englishValue = nextValue.replace(
-      /[०-९]/g,
-      (digit) =>
-        String(
-          nepaliDigits.indexOf(digit)
-        )
-    );
+    if (!nextValue.trim()) {
+      setInvalid(false);
+      onChange?.("");
+      return;
+    }
+
+    /*
+     * Convert a complete BS date into
+     * the internal AD date.
+     */
+
+    const englishValue =
+      toEnglishDigits(nextValue);
 
     if (
       /^\d{4}-\d{2}-\d{2}$/.test(
         englishValue
       )
     ) {
-      try {
-        const nepaliDate = new NepaliDate(
-          englishValue
-        );
+      const adValue =
+        convertBsToAd(nextValue);
 
-        const jsDate =
-          nepaliDate.toJsDate();
-
-        const year =
-          jsDate.getFullYear();
-
-        const month = String(
-          jsDate.getMonth() + 1
-        ).padStart(2, "0");
-
-        const day = String(
-          jsDate.getDate()
-        ).padStart(2, "0");
-
-        onChange?.(
-          `${year}-${month}-${day}`
-        );
-      } catch {
-        // Incomplete/invalid dates stay in the
-        // input until the user completes them.
+      if (adValue) {
+        setInvalid(false);
+        onChange?.(adValue);
+        return;
       }
-    } else if (!nextValue) {
-      onChange?.("");
+
+      setInvalid(true);
+      return;
     }
+
+    /*
+     * Allow typing to continue without
+     * immediately showing an error.
+     */
+
+    setInvalid(false);
   };
 
-  const parts = getBsParts(value);
+  /* =======================================================
+     BLUR
+     ======================================================= */
+
+  const handleBlur = () => {
+    /*
+     * Empty is allowed unless required.
+     */
+
+    if (!displayValue.trim()) {
+      setInvalid(Boolean(required));
+      return;
+    }
+
+    const englishValue =
+      toEnglishDigits(
+        displayValue
+      );
+
+    if (
+      !BS_DATE_PATTERN.test(
+        englishValue
+      ) ||
+      !convertBsToAd(displayValue)
+    ) {
+      setInvalid(true);
+      return;
+    }
+
+    /*
+     * Normalize the visible value
+     * into Nepali digits after editing.
+     */
+
+    setDisplayValue(
+      toNepaliDigits(
+        englishValue
+      )
+    );
+
+    setInvalid(false);
+  };
+
+  /* =======================================================
+     DISPLAY
+     ======================================================= */
 
   return (
     <div className="form-group nepali-date-input">
@@ -153,31 +312,37 @@ function NepaliDateInput({
         {required ? " *" : ""}
       </label>
 
-      <input
-        type="text"
-        inputMode="numeric"
-        value={displayValue}
-        onChange={handleChange}
-        placeholder="YYYY-MM-DD"
-        disabled={disabled}
-        aria-label={`${label} in Nepali calendar`}
-        autoComplete="off"
-      />
+      <div className="nepali-date-input-wrap">
+        <span className="nepali-date-icon">
+          📅
+        </span>
 
-      {parts && (
-        <small className="input-help">
-          BS {parts.year}-{String(
-            parts.month
-          ).padStart(2, "0")}-{String(
-            parts.date
-          ).padStart(2, "0")}
-        </small>
-      )}
+        <input
+          type="text"
+          inputMode="numeric"
+          value={displayValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          placeholder="YYYY-MM-DD"
+          disabled={disabled}
+          aria-label={`${label} in Nepali calendar`}
+          aria-invalid={invalid}
+          autoComplete="off"
+          className={
+            invalid
+              ? "input-error"
+              : ""
+          }
+        />
+      </div>
 
-      {(min || max) && (
-        <small className="input-help">
-          Date range checking remains based on
-          the stored AD date.
+      <small className="input-help">
+        Bikram Sambat date
+      </small>
+
+      {invalid && (
+        <small className="input-help input-error-text">
+          Please enter a valid Nepali date.
         </small>
       )}
     </div>
@@ -185,3 +350,4 @@ function NepaliDateInput({
 }
 
 export default NepaliDateInput;
+
