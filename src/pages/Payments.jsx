@@ -1,4 +1,3 @@
-
 import {
   useCallback,
   useEffect,
@@ -37,6 +36,7 @@ function Payments({
   onDelete,
   openFormSignal,
   prefillCustomerId,
+  deliveryId,
   resetFormSignal,
   onFormStateChange,
 }) {
@@ -60,14 +60,19 @@ function Payments({
      ======================================================= */
 
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(getEmptyForm);
+
+  const [form, setForm] = useState(
+    getEmptyForm
+  );
 
   /* =======================================================
      REFS
      ======================================================= */
 
   const formRef = useRef(null);
+
   const amountInputRef = useRef(null);
+
   const customerPickerRef = useRef(null);
 
   /* =======================================================
@@ -76,330 +81,517 @@ function Payments({
 
   useEffect(() => {
     onFormStateChange?.(showForm);
-  }, [showForm, onFormStateChange]);
+  }, [
+    showForm,
+    onFormStateChange,
+  ]);
 
   /* =======================================================
      SCROLL + SMART FOCUS
-     
-     No customer:
-       → open/focus customer search
-
-     Customer already selected:
-       → focus amount
      ======================================================= */
 
-useEffect(() => {
-  if (!showForm) {
-    return undefined;
-  }
-
-  const scrollTimer = setTimeout(() => {
-    formRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, 100);
-
-  const focusTimer = setTimeout(() => {
-    if (form.customerId) {
-      amountInputRef.current?.focus();
-      amountInputRef.current?.select();
-    } else {
-      customerPickerRef.current?.focus();
+  useEffect(() => {
+    if (!showForm) {
+      return undefined;
     }
-  }, 200);
 
-  return () => {
-    clearTimeout(scrollTimer);
-    clearTimeout(focusTimer);
-  };
-}, [
-  showForm,
-  openFormSignal,
-  form.customerId,
-]);
+    const scrollTimer = setTimeout(() => {
+      formRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+
+    const focusTimer = setTimeout(() => {
+      if (form.customerId) {
+        amountInputRef.current?.focus();
+        amountInputRef.current?.select();
+      } else {
+        customerPickerRef.current?.focus?.();
+      }
+    }, 250);
+
+    return () => {
+      clearTimeout(scrollTimer);
+      clearTimeout(focusTimer);
+    };
+  }, [
+    showForm,
+    openFormSignal,
+    form.customerId,
+  ]);
+
   /* =======================================================
      RESET FORM
-     
-     Triggered by normal sidebar navigation.
      ======================================================= */
 
   useEffect(() => {
     setShowForm(false);
     setForm(getEmptyForm());
-  }, [resetFormSignal, getEmptyForm]);
+  }, [
+    resetFormSignal,
+    getEmptyForm,
+  ]);
 
   /* =======================================================
      OPEN PAYMENT FORM FROM CUSTOMER CONTEXT
+     =======================================================
 
-     Behavior:
-       - no customer → fresh form
-       - customer with 1 outstanding delivery
-           → auto-select delivery
-           → auto-fill remaining amount
-       - customer with multiple outstanding deliveries
-           → select customer only
-       - customer with no outstanding delivery
-           → select customer only
+     If a customer is supplied:
+
+       1 outstanding delivery
+         → automatically select it
+         → automatically fill remaining amount
+
+       Multiple outstanding deliveries
+         → select customer only
+
+       No outstanding deliveries
+         → select customer only
      ======================================================= */
 
-  useEffect(() => {
-    if (!openFormSignal) return;
+useEffect(() => {
+  if (!openFormSignal) return;
 
-    const customerId = prefillCustomerId
-      ? String(prefillCustomerId)
-      : "";
+  const customerId = prefillCustomerId
+    ? String(prefillCustomerId)
+    : "";
 
-    let nextForm = getEmptyForm();
+  const selectedDeliveryId = deliveryId
+    ? String(deliveryId)
+    : "";
 
-    if (customerId) {
-      const outstanding = deliveries
-        .filter(
-          (delivery) =>
-            String(delivery.customerId) === customerId &&
-            getDeliveryRemaining(delivery, payments) > 0
-        )
-        .sort(
-          (a, b) =>
-            new Date(b.date || b.createdAt) -
-            new Date(a.date || a.createdAt)
-        );
+  let nextForm = getEmptyForm();
 
-      /* ---------------------------------------------------
-         Exactly one outstanding delivery
-         --------------------------------------------------- */
+  /*
+   * -------------------------------------------------------
+   * DELIVERY WAS SELECTED
+   *
+   * This is the path:
+   *
+   * Deliveries
+   *    ↓
+   * Payment
+   *
+   * We already know the exact customer AND delivery.
+   * -------------------------------------------------------
+   */
+  if (customerId && selectedDeliveryId) {
+    const delivery = deliveries.find(
+      (item) =>
+        String(item.id) ===
+        selectedDeliveryId
+    );
 
-      if (outstanding.length === 1) {
-        const delivery = outstanding[0];
-
-        const remaining = getDeliveryRemaining(
+    if (delivery) {
+      const remaining =
+        getDeliveryRemaining(
           delivery,
           payments
         );
 
-        nextForm = {
-          ...nextForm,
-          customerId,
-          deliveryId: String(delivery.id),
-          amount: String(remaining),
-        };
-      } else {
-        /* -----------------------------------------------
-           Zero or multiple outstanding deliveries
-           ----------------------------------------------- */
-
-        nextForm.customerId = customerId;
-      }
+      nextForm = {
+        ...nextForm,
+        customerId,
+        deliveryId: selectedDeliveryId,
+        amount:
+          remaining > 0
+            ? String(remaining)
+            : "",
+      };
+    } else {
+      /*
+       * Delivery no longer exists.
+       * Still keep the customer selected.
+       */
+      nextForm.customerId = customerId;
     }
+  }
 
-    setForm(nextForm);
-    setShowForm(true);
+  /*
+   * -------------------------------------------------------
+   * CUSTOMER ONLY
+   *
+   * This is the path:
+   *
+   * Customer Details
+   *    ↓
+   * Payment
+   *
+   * If there is exactly one outstanding delivery,
+   * select it automatically.
+   * -------------------------------------------------------
+   */
+  else if (customerId) {
+    const outstanding =
+      deliveries
+        .filter(
+          (delivery) =>
+            String(delivery.customerId) ===
+              customerId &&
+            getDeliveryRemaining(
+              delivery,
+              payments
+            ) > 0
+        )
+        .sort(
+          (a, b) =>
+            new Date(
+              b.date || b.createdAt
+            ) -
+            new Date(
+              a.date || a.createdAt
+            )
+        );
 
-    // We intentionally react only to the form-opening
-    // signal/context here. Data changes should not
-    // unexpectedly reopen the payment form.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openFormSignal, prefillCustomerId]);
+    if (outstanding.length === 1) {
+      const delivery =
+        outstanding[0];
+
+      const remaining =
+        getDeliveryRemaining(
+          delivery,
+          payments
+        );
+
+      nextForm = {
+        ...nextForm,
+        customerId,
+        deliveryId:
+          String(delivery.id),
+        amount:
+          remaining > 0
+            ? String(remaining)
+            : "",
+      };
+    } else {
+      nextForm.customerId =
+        customerId;
+    }
+  }
+
+  /*
+   * -------------------------------------------------------
+   * OPEN PAYMENT FORM
+   * -------------------------------------------------------
+   */
+  setForm(nextForm);
+  setShowForm(true);
+
+  // The opening signal controls this effect.
+  // Data changes should not reopen the form.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [
+  openFormSignal,
+  prefillCustomerId,
+  deliveryId,
+]);
 
   /* =======================================================
      OUTSTANDING DELIVERIES
      ======================================================= */
 
-  const outstandingDeliveries = useMemo(() => {
-    return deliveries
-      .map((delivery) => {
-        const customer = customers.find(
+  const outstandingDeliveries =
+    useMemo(() => {
+      return deliveries
+        .map((delivery) => {
+          const customer =
+            customers.find(
+              (item) =>
+                String(item.id) ===
+                String(
+                  delivery.customerId
+                )
+            );
+
+          const total =
+            getDeliveryTotal(
+              delivery
+            );
+
+          const paid =
+            getDeliveryPayments(
+              payments,
+              delivery.id
+            );
+
+          const remaining =
+            Math.max(
+              0,
+              total - paid
+            );
+
+          return {
+            delivery,
+            customer,
+            total,
+            paid,
+            remaining,
+          };
+        })
+        .filter(
           (item) =>
-            String(item.id) === String(delivery.customerId)
+            item.remaining > 0
+        )
+        .sort(
+          (a, b) =>
+            new Date(
+              b.delivery.date ||
+                b.delivery.createdAt ||
+                0
+            ).getTime() -
+            new Date(
+              a.delivery.date ||
+                a.delivery.createdAt ||
+                0
+            ).getTime()
         );
-
-        const total = getDeliveryTotal(delivery);
-        const paid = getDeliveryPayments(
-          payments,
-          delivery.id
-        );
-
-        const remaining = Math.max(
-          0,
-          total - paid
-        );
-
-        return {
-          delivery,
-          customer,
-          total,
-          paid,
-          remaining,
-        };
-      })
-      .filter((item) => item.remaining > 0)
-      .sort(
-        (a, b) =>
-          new Date(
-            b.delivery.date || b.delivery.createdAt
-          ) -
-          new Date(
-            a.delivery.date || a.delivery.createdAt
-          )
-      );
-  }, [customers, deliveries, payments]);
+    }, [
+      customers,
+      deliveries,
+      payments,
+    ]);
 
   /* =======================================================
      DELIVERIES FOR SELECTED CUSTOMER
      ======================================================= */
 
-  const selectedCustomerDeliveries = useMemo(() => {
-    if (!form.customerId) {
-      return [];
-    }
+  const selectedCustomerDeliveries =
+    useMemo(() => {
+      if (!form.customerId) {
+        return [];
+      }
 
-    return deliveries.filter(
-      (delivery) =>
-        String(delivery.customerId) ===
-        String(form.customerId)
-    );
-  }, [deliveries, form.customerId]);
+      return deliveries
+        .filter(
+          (delivery) =>
+            String(
+              delivery.customerId
+            ) ===
+            String(form.customerId)
+        )
+        .sort(
+          (a, b) =>
+            new Date(
+              b.date ||
+                b.createdAt ||
+                0
+            ).getTime() -
+            new Date(
+              a.date ||
+                a.createdAt ||
+                0
+            ).getTime()
+        );
+    }, [
+      deliveries,
+      form.customerId,
+    ]);
 
   /* =======================================================
      CUSTOMER BALANCES
      ======================================================= */
 
-  const customerBalances = useMemo(() => {
-    return customers.map((customer) => {
-      const billed = deliveries
-        .filter(
-          (delivery) =>
-            String(delivery.customerId) ===
-            String(customer.id)
-        )
-        .reduce(
-          (sum, delivery) =>
-            sum + getDeliveryTotal(delivery),
-          0
-        );
+  const customerBalances =
+    useMemo(() => {
+      return customers.map(
+        (customer) => {
+          const billed =
+            deliveries
+              .filter(
+                (delivery) =>
+                  String(
+                    delivery.customerId
+                  ) ===
+                  String(customer.id)
+              )
+              .reduce(
+                (
+                  sum,
+                  delivery
+                ) =>
+                  sum +
+                  getDeliveryTotal(
+                    delivery
+                  ),
+                0
+              );
 
-      const paid = getCustomerPayments(
-        payments,
-        customer.id
+          const paid =
+            getCustomerPayments(
+              payments,
+              customer.id
+            );
+
+          return {
+            customer,
+            billed,
+            paid,
+            outstanding:
+              Math.max(
+                0,
+                billed - paid
+              ),
+          };
+        }
       );
-
-      return {
-        customer,
-        billed,
-        paid,
-        outstanding: Math.max(
-          0,
-          billed - paid
-        ),
-      };
-    });
-  }, [customers, deliveries, payments]);
+    }, [
+      customers,
+      deliveries,
+      payments,
+    ]);
 
   /* =======================================================
      OPEN PAYMENT FOR SPECIFIC DELIVERY
      ======================================================= */
 
-  const openPaymentForDelivery = useCallback(
-    (item) => {
-      setForm({
-        customerId: item.customer?.id
-          ? String(item.customer.id)
-          : "",
-        deliveryId: String(item.delivery.id),
-        amount:
-          item.remaining > 0
-            ? String(item.remaining)
-            : "",
-        date: today(),
-        notes: "",
-      });
+  const openPaymentForDelivery =
+    useCallback(
+      (item) => {
+        const customerId =
+          item.customer?.id
+            ? String(
+                item.customer.id
+              )
+            : "";
 
-      setShowForm(true);
-    },
-    []
-  );
+        const deliveryId =
+          String(
+            item.delivery.id
+          );
+
+        setForm({
+          customerId,
+          deliveryId,
+          amount:
+            item.remaining > 0
+              ? String(
+                  item.remaining
+                )
+              : "",
+          date: today(),
+          notes: "",
+        });
+
+        setShowForm(true);
+      },
+      []
+    );
 
   /* =======================================================
      OPEN FRESH PAYMENT FORM
      ======================================================= */
 
-  const openFreshPaymentForm = useCallback(() => {
-    setForm(getEmptyForm());
-    setShowForm(true);
-  }, [getEmptyForm]);
+  const openFreshPaymentForm =
+    useCallback(() => {
+      setForm(
+        getEmptyForm()
+      );
+
+      setShowForm(true);
+    }, [
+      getEmptyForm,
+    ]);
 
   /* =======================================================
      CHANGE CUSTOMER
      ======================================================= */
 
-  const handleCustomerChange = useCallback((value) => {
-    setForm((current) => ({
-      ...current,
-      customerId: value,
-      deliveryId: "",
-      amount: "",
-    }));
-  }, []);
+  const handleCustomerChange =
+    useCallback((value) => {
+      setForm((current) => ({
+        ...current,
+
+        customerId: value,
+
+        deliveryId: "",
+
+        amount: "",
+      }));
+    }, []);
 
   /* =======================================================
      SELECT DELIVERY
      ======================================================= */
 
-  const handleDeliveryChange = useCallback(
-    (event) => {
-      const deliveryId = event.target.value;
+  const handleDeliveryChange =
+    useCallback(
+      (event) => {
+        const deliveryId =
+          event.target.value;
 
-      const delivery = deliveries.find(
-        (item) =>
-          String(item.id) ===
-          String(deliveryId)
-      );
+        const delivery =
+          deliveries.find(
+            (item) =>
+              String(item.id) ===
+              String(deliveryId)
+          );
 
-      setForm((current) => ({
-        ...current,
-        deliveryId,
-        amount: delivery
-          ? String(
-              getDeliveryRemaining(
-                delivery,
-                payments
+        setForm((current) => ({
+          ...current,
+
+          deliveryId,
+
+          amount: delivery
+            ? String(
+                getDeliveryRemaining(
+                  delivery,
+                  payments
+                )
               )
-            )
-          : "",
-      }));
-    },
-    [deliveries, payments]
-  );
+            : "",
+        }));
+      },
+      [
+        deliveries,
+        payments,
+      ]
+    );
 
   /* =======================================================
      HANDLE SUBMIT
      ======================================================= */
 
-  const handleSubmit = (event) => {
+  const handleSubmit = (
+    event
+  ) => {
     event.preventDefault();
 
     if (!form.customerId) {
-      alert("Please select a customer.");
+      alert(
+        "Please select a customer."
+      );
       return;
     }
 
-    const amount = Number(form.amount);
+    const amount =
+      Number(form.amount);
 
-    if (!Number.isFinite(amount) || amount <= 0) {
-      alert("Enter a valid payment amount.");
+    if (
+      !Number.isFinite(
+        amount
+      ) ||
+      amount <= 0
+    ) {
+      alert(
+        "Enter a valid payment amount."
+      );
       return;
     }
 
     /* -----------------------------------------------------
-       Validate delivery-specific payment
+       DELIVERY-SPECIFIC VALIDATION
        ----------------------------------------------------- */
 
     if (form.deliveryId) {
-      const delivery = deliveries.find(
-        (item) =>
-          String(item.id) ===
-          String(form.deliveryId)
-      );
+      const delivery =
+        deliveries.find(
+          (item) =>
+            String(item.id) ===
+            String(
+              form.deliveryId
+            )
+        );
 
       if (delivery) {
         const remaining =
@@ -408,32 +600,51 @@ useEffect(() => {
             payments
           );
 
-        if (amount > remaining) {
+        if (
+          amount >
+          remaining
+        ) {
           alert(
             `This delivery has only Rs. ${formatMoney(
               remaining
             )} remaining.`
           );
+
           return;
         }
       }
     }
 
     /* -----------------------------------------------------
-       Save payment
+       SAVE PAYMENT
        ----------------------------------------------------- */
 
     onAdd({
-      customerId: String(form.customerId),
-      deliveryId: form.deliveryId
-        ? String(form.deliveryId)
-        : null,
+      customerId:
+        String(
+          form.customerId
+        ),
+
+      deliveryId:
+        form.deliveryId
+          ? String(
+              form.deliveryId
+            )
+          : null,
+
       amount,
-      date: form.date || today(),
-      notes: form.notes.trim(),
+
+      date:
+        form.date || today(),
+
+      notes:
+        form.notes.trim(),
     });
 
-    setForm(getEmptyForm());
+    setForm(
+      getEmptyForm()
+    );
+
     setShowForm(false);
   };
 
@@ -441,20 +652,58 @@ useEffect(() => {
      DELETE PAYMENT
      ======================================================= */
 
-  const handleDelete = useCallback(
-    (paymentId) => {
-      const confirmed = window.confirm(
-        "Delete this payment?"
+  const handleDelete =
+    useCallback(
+      (paymentId) => {
+        const confirmed =
+          window.confirm(
+            "Delete this payment?"
+          );
+
+        if (!confirmed) {
+          return;
+        }
+
+        onDelete(paymentId);
+      },
+      [onDelete]
+    );
+
+  /* =======================================================
+     PAYMENT HISTORY
+
+     IMPORTANT:
+     createdAt contains the exact time the
+     payment was recorded.
+
+     Therefore the newest recorded payment
+     appears at the top.
+     ======================================================= */
+
+  const sortedPaymentHistory =
+    useMemo(() => {
+      return [...payments].sort(
+        (a, b) => {
+          const aTime =
+            new Date(
+              a.createdAt ||
+                a.date ||
+                0
+            ).getTime();
+
+          const bTime =
+            new Date(
+              b.createdAt ||
+                b.date ||
+                0
+            ).getTime();
+
+          return (
+            bTime - aTime
+          );
+        }
       );
-
-      if (!confirmed) {
-        return;
-      }
-
-      onDelete(paymentId);
-    },
-    [onDelete]
-  );
+    }, [payments]);
 
   /* =======================================================
      RENDER
@@ -471,14 +720,17 @@ useEffect(() => {
           <h2>Payments</h2>
 
           <p className="welcome">
-            Record and track customer payments
+            Record and track customer
+            payments
           </p>
         </div>
 
         <button
           type="button"
           className="primary-button"
-          onClick={openFreshPaymentForm}
+          onClick={
+            openFreshPaymentForm
+          }
         >
           + Record Payment
         </button>
@@ -492,98 +744,120 @@ useEffect(() => {
         <div className="form-header">
           <div>
             <h3>
-              💰 Outstanding Deliveries
+              💰 Outstanding
+              Deliveries
             </h3>
 
             <p>
-              Click Record Payment beside a
-              delivery to record money received.
+              Select a delivery to
+              record its payment.
             </p>
           </div>
         </div>
 
-        {outstandingDeliveries.length === 0 ? (
+        {outstandingDeliveries.length ===
+        0 ? (
           <div className="empty-state">
             <div className="empty-icon">
               ✅
             </div>
 
             <h3>
-              No outstanding deliveries
+              No outstanding
+              deliveries
             </h3>
 
             <p>
-              All delivery balances are
-              currently paid.
+              All delivery balances
+              are currently paid.
             </p>
           </div>
         ) : (
           <div className="customers-list">
-            {outstandingDeliveries.map((item) => (
-              <div
-                className="customer-card"
-                key={item.delivery.id}
-              >
-                <div className="customer-avatar">
-                  {getInitials(
-                    item.customer?.name
-                  )}
-                </div>
+            {outstandingDeliveries.map(
+              (item) => (
+                <div
+                  className="customer-card"
+                  key={
+                    item.delivery.id
+                  }
+                >
+                  <div className="customer-avatar">
+                    {getInitials(
+                      item.customer
+                        ?.name
+                    )}
+                  </div>
 
-                <div className="customer-info">
-                  <h3>
-                    {item.customer?.name ||
-                      "Unknown Customer"}
-                  </h3>
+                  <div className="customer-info">
+                    <h3>
+                      {item.customer
+                        ?.name ||
+                        "Unknown Customer"}
+                    </h3>
 
-                  <div className="customer-details">
-                   <span>
-                      📅{" "}
-                      {item.delivery.date
-                        ? formatNepaliDate(item.delivery.date)
-                        : "No date"}
-                    </span>
+                    <div className="customer-details">
+                      <span>
+                        📅{" "}
+                        {item.delivery
+                          .date
+                          ? formatNepaliDate(
+                              item
+                                .delivery
+                                .date
+                            )
+                          : "No date"}
+                      </span>
 
-                    <span>
-                      💧{" "}
-                      {formatNumber(
-                        item.delivery.quantity
-                      )}{" "}
-                      L
-                    </span>
+                      <span>
+                        💧{" "}
+                        {formatNumber(
+                          item
+                            .delivery
+                            .quantity
+                        )}{" "}
+                        L
+                      </span>
 
-                    <span>
-                      💰 Total: Rs.{" "}
-                      {formatMoney(item.total)}
-                    </span>
+                      <span>
+                        💰 Total: Rs.{" "}
+                        {formatMoney(
+                          item.total
+                        )}
+                      </span>
 
-                    <span>
-                      ✅ Paid: Rs.{" "}
-                      {formatMoney(item.paid)}
-                    </span>
+                      <span>
+                        ✅ Paid: Rs.{" "}
+                        {formatMoney(
+                          item.paid
+                        )}
+                      </span>
 
-                    <span>
-                      ⚠️ Due: Rs.{" "}
-                      {formatMoney(
-                        item.remaining
-                      )}
-                    </span>
+                      <span>
+                        ⚠️ Due: Rs.{" "}
+                        {formatMoney(
+                          item.remaining
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="customer-actions">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      onClick={() =>
+                        openPaymentForDelivery(
+                          item
+                        )
+                      }
+                    >
+                      💰 Record Payment
+                    </button>
                   </div>
                 </div>
-
-                <div className="customer-actions">
-                  <button
-                    type="button"
-                    className="primary-button"
-                    onClick={() =>
-                      openPaymentForDelivery(item)
-                    }
-                  >
-                    💰 Record Payment
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         )}
       </div>
@@ -596,15 +870,19 @@ useEffect(() => {
         <form
           className="customer-form-card"
           ref={formRef}
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
         >
           <div className="form-header">
             <div>
-              <h3>Record Payment</h3>
+              <h3>
+                Record Payment
+              </h3>
 
               <p>
-                Record money received from a
-                customer.
+                Record money received
+                from a customer.
               </p>
             </div>
 
@@ -620,20 +898,28 @@ useEffect(() => {
           </div>
 
           <div className="form-grid">
-            {/* =================================================
+            {/* =============================================
                 CUSTOMER
-                ================================================= */}
+                ============================================= */}
 
             <CustomerPicker
-              ref={customerPickerRef}
-              customers={customers}
-              value={form.customerId}
-              onChange={handleCustomerChange}
+              ref={
+                customerPickerRef
+              }
+              customers={
+                customers
+              }
+              value={
+                form.customerId
+              }
+              onChange={
+                handleCustomerChange
+              }
             />
 
-            {/* =================================================
+            {/* =============================================
                 DELIVERY
-                ================================================= */}
+                ============================================= */}
 
             <div className="form-group">
               <label>
@@ -641,9 +927,15 @@ useEffect(() => {
               </label>
 
               <select
-                value={form.deliveryId}
-                onChange={handleDeliveryChange}
-                disabled={!form.customerId}
+                value={
+                  form.deliveryId
+                }
+                onChange={
+                  handleDeliveryChange
+                }
+                disabled={
+                  !form.customerId
+                }
               >
                 <option value="">
                   General payment
@@ -659,10 +951,16 @@ useEffect(() => {
 
                     return (
                       <option
-                        key={delivery.id}
-                        value={delivery.id}
+                        key={
+                          delivery.id
+                        }
+                        value={
+                          delivery.id
+                        }
                       >
-                        {delivery.date} —{" "}
+                        {delivery.date ||
+                          "No date"}{" "}
+                        —{" "}
                         {formatNumber(
                           delivery.quantity
                         )}{" "}
@@ -677,15 +975,16 @@ useEffect(() => {
               </select>
 
               <small className="input-help">
-                Select a specific delivery
-                or leave it as General
+                Select a specific
+                delivery or leave
+                it as General
                 payment.
               </small>
             </div>
 
-            {/* =================================================
+            {/* =============================================
                 AMOUNT
-                ================================================= */}
+                ============================================= */}
 
             <div className="form-group">
               <label>
@@ -693,40 +992,58 @@ useEffect(() => {
               </label>
 
               <input
-                ref={amountInputRef}
+                ref={
+                  amountInputRef
+                }
                 type="number"
                 min="0"
                 step="0.01"
-                value={form.amount}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    amount:
-                      event.target.value,
-                  }))
+                value={
+                  form.amount
+                }
+                onChange={(
+                  event
+                ) =>
+                  setForm(
+                    (current) => ({
+                      ...current,
+
+                      amount:
+                        event
+                          .target
+                          .value,
+                    })
+                  )
                 }
                 placeholder="Payment amount"
               />
             </div>
 
-            {/* =================================================
+            {/* =============================================
                 DATE
-                ================================================= */}
+                ============================================= */}
 
-          <NepaliDateInput
-  value={form.date}
-  onChange={(value) =>
-    setForm((current) => ({
-      ...current,
-      date: value,
-    }))
-  }
-  label="Payment Date"
-/>
+            <NepaliDateInput
+              value={
+                form.date
+              }
+              onChange={(
+                value
+              ) =>
+                setForm(
+                  (current) => ({
+                    ...current,
 
-            {/* =================================================
+                    date: value,
+                  })
+                )
+              }
+              label="Payment Date"
+            />
+
+            {/* =============================================
                 NOTES
-                ================================================= */}
+                ============================================= */}
 
             <div className="form-group form-group-full">
               <label>
@@ -734,22 +1051,31 @@ useEffect(() => {
               </label>
 
               <textarea
-                value={form.notes}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    notes:
-                      event.target.value,
-                  }))
+                value={
+                  form.notes
+                }
+                onChange={(
+                  event
+                ) =>
+                  setForm(
+                    (current) => ({
+                      ...current,
+
+                      notes:
+                        event
+                          .target
+                          .value,
+                    })
+                  )
                 }
                 placeholder="Optional notes..."
               />
             </div>
           </div>
 
-          {/* =================================================
+          {/* =============================================
               FORM ACTIONS
-              ================================================= */}
+              ============================================= */}
 
           <div className="form-actions">
             <button
@@ -784,58 +1110,84 @@ useEffect(() => {
             </h3>
 
             <p>
-              Overview of billed, paid and
-              outstanding amounts.
+              Overview of billed,
+              paid and outstanding
+              amounts.
             </p>
           </div>
         </div>
 
-        <div className="customers-list">
-          {customerBalances.map(
-            ({
-              customer,
-              billed,
-              paid,
-              outstanding,
-            }) => (
-              <div
-                className="customer-card"
-                key={customer.id}
-              >
-                <div className="customer-avatar">
-                  {getInitials(
-                    customer.name
-                  )}
-                </div>
+        {customerBalances.length ===
+        0 ? (
+          <div className="empty-state">
+            <div className="empty-icon">
+              👥
+            </div>
 
-                <div className="customer-info">
-                  <h3>
-                    {customer.name}
-                  </h3>
+            <h3>
+              No customers yet
+            </h3>
 
-                  <div className="customer-details">
-                    <span>
-                      Billed: Rs.{" "}
-                      {formatMoney(billed)}
-                    </span>
+            <p>
+              Add customers to
+              start tracking
+              payments.
+            </p>
+          </div>
+        ) : (
+          <div className="customers-list">
+            {customerBalances.map(
+              ({
+                customer,
+                billed,
+                paid,
+                outstanding,
+              }) => (
+                <div
+                  className="customer-card"
+                  key={
+                    customer.id
+                  }
+                >
+                  <div className="customer-avatar">
+                    {getInitials(
+                      customer.name
+                    )}
+                  </div>
 
-                    <span>
-                      Paid: Rs.{" "}
-                      {formatMoney(paid)}
-                    </span>
+                  <div className="customer-info">
+                    <h3>
+                      {customer.name}
+                    </h3>
 
-                    <span>
-                      Due: Rs.{" "}
-                      {formatMoney(
-                        outstanding
-                      )}
-                    </span>
+                    <div className="customer-details">
+                      <span>
+                        💰 Billed: Rs.{" "}
+                        {formatMoney(
+                          billed
+                        )}
+                      </span>
+
+                      <span>
+                        ✅ Paid: Rs.{" "}
+                        {formatMoney(
+                          paid
+                        )}
+                      </span>
+
+                      <span>
+                        ⚠️ Due: Rs.{" "}
+                        {formatMoney(
+                          outstanding
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          )}
-        </div>
+              )
+            )}
+          </div>
+        )}
       </div>
 
       {/* ===================================================
@@ -843,7 +1195,18 @@ useEffect(() => {
           =================================================== */}
 
       <div className="payment-history">
-        <h3>Payment History</h3>
+        <div className="form-header">
+          <div>
+            <h3>
+              💰 Payment History
+            </h3>
+
+            <p>
+              Most recently recorded
+              payments appear first.
+            </p>
+          </div>
+        </div>
 
         {payments.length === 0 ? (
           <div className="empty-state">
@@ -862,23 +1225,14 @@ useEffect(() => {
           </div>
         ) : (
           <div className="customers-list">
-            {[...payments]
-              .sort(
-                (a, b) =>
-                  new Date(
-                    b.date ||
-                      b.createdAt
-                  ) -
-                  new Date(
-                    a.date ||
-                      a.createdAt
-                  )
-              )
-              .map((payment) => {
+            {sortedPaymentHistory.map(
+              (payment) => {
                 const customer =
                   customers.find(
                     (item) =>
-                      String(item.id) ===
+                      String(
+                        item.id
+                      ) ===
                       String(
                         payment.customerId
                       )
@@ -887,7 +1241,9 @@ useEffect(() => {
                 const delivery =
                   deliveries.find(
                     (item) =>
-                      String(item.id) ===
+                      String(
+                        item.id
+                      ) ===
                       String(
                         payment.deliveryId
                       )
@@ -896,7 +1252,9 @@ useEffect(() => {
                 return (
                   <div
                     className="customer-card"
-                    key={payment.id}
+                    key={
+                      payment.id
+                    }
                   >
                     <div className="customer-avatar">
                       💰
@@ -904,7 +1262,8 @@ useEffect(() => {
 
                     <div className="customer-info">
                       <h3>
-                        {customer?.name ||
+                        {customer
+                          ?.name ||
                           "Unknown Customer"}
                       </h3>
 
@@ -916,12 +1275,33 @@ useEffect(() => {
                           )}
                         </span>
 
-                       <span>
+                        <span>
                           📅{" "}
                           {payment.date
-                            ? formatNepaliDate(payment.date)
+                            ? formatNepaliDate(
+                                payment.date
+                              )
                             : "No date"}
                         </span>
+
+                        {payment.createdAt && (
+                          <span>
+                            🕐{" "}
+                            {new Date(
+                              payment.createdAt
+                            ).toLocaleTimeString(
+                              [],
+                              {
+                                hour:
+                                  "2-digit",
+                                minute:
+                                  "2-digit",
+                                second:
+                                  "2-digit",
+                              }
+                            )}
+                          </span>
+                        )}
 
                         {delivery && (
                           <span>
@@ -942,7 +1322,9 @@ useEffect(() => {
                         {payment.notes && (
                           <span>
                             📝{" "}
-                            {payment.notes}
+                            {
+                              payment.notes
+                            }
                           </span>
                         )}
                       </div>
@@ -964,7 +1346,8 @@ useEffect(() => {
                     </div>
                   </div>
                 );
-              })}
+              }
+            )}
           </div>
         )}
       </div>

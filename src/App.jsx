@@ -94,6 +94,11 @@ export default function App() {
     setDeliveryFormOpen,
   ] = useState(false);
 
+  const [
+  recentDeliveryId,
+  setRecentDeliveryId,
+] = useState(null);
+
   /* =========================================================
      PAYMENT FORM STATE
      ========================================================= */
@@ -109,6 +114,11 @@ export default function App() {
   ] = useState(null);
 
   const [
+  paymentDeliveryId,
+  setPaymentDeliveryId,
+] = useState(null);
+
+  const [
     paymentResetSignal,
     setPaymentResetSignal,
   ] = useState(0);
@@ -118,6 +128,10 @@ export default function App() {
     setPaymentFormOpen,
   ] = useState(false);
 
+  const [
+  recentPaymentId,
+  setRecentPaymentId,
+] = useState(null);
   /* =========================================================
      LOCAL DATA
      ========================================================= */
@@ -347,27 +361,28 @@ export default function App() {
   /* =========================================================
      DELIVERY CRUD
      ========================================================= */
+const addDelivery = useCallback((delivery) => {
+  const deliveryId = createId("delivery_");
 
-  const addDelivery =
-    useCallback((delivery) => {
-      setData((current) => ({
-        ...current,
+  setData((current) => ({
+    ...current,
 
-        deliveries: [
-          ...current.deliveries,
+    deliveries: [
+      ...current.deliveries,
 
-          {
-            ...delivery,
-            id: createId(
-              "delivery_"
-            ),
-            status: "pending",
-            createdAt:
-              new Date().toISOString(),
-          },
-        ],
-      }));
-    }, []);
+      {
+        ...delivery,
+        id: deliveryId,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      },
+    ],
+  }));
+
+  setRecentDeliveryId(deliveryId);
+
+  return deliveryId;
+}, []);
 
   const updateDelivery =
     useCallback((id, updates) => {
@@ -441,25 +456,27 @@ export default function App() {
      PAYMENT CRUD
      ========================================================= */
 
-  const addPayment =
-    useCallback((payment) => {
-      setData((current) => ({
-        ...current,
+const addPayment = useCallback((payment) => {
+  const paymentId = createId("payment_");
 
-        payments: [
-          ...current.payments,
+  setData((current) => ({
+    ...current,
 
-          {
-            ...payment,
-            id: createId(
-              "payment_"
-            ),
-            createdAt:
-              new Date().toISOString(),
-          },
-        ],
-      }));
-    }, []);
+    payments: [
+      ...current.payments,
+
+      {
+        ...payment,
+        id: paymentId,
+        createdAt: new Date().toISOString(),
+      },
+    ],
+  }));
+
+  setRecentPaymentId(paymentId);
+
+  return paymentId;
+}, []);
 
   const deletePayment =
     useCallback((id) => {
@@ -567,32 +584,64 @@ export default function App() {
      NORMAL NAVIGATION
      ========================================================= */
 
-  const handleNavigate = useCallback(
-    (page) => {
-      setDeliveryFormCustomerId(null);
+ const handleNavigate = useCallback(
+  (page, options = {}) => {
+    const {
+      customerId = null,
+      deliveryId = null,
+    } = options;
+
+    setDeliveryFormCustomerId(null);
+
+    /*
+     * PAYMENT NAVIGATION
+     *
+     * When coming from a delivery, keep the
+     * customer and exact delivery selected.
+     */
+    if (page === "Payments" && customerId) {
+      setPaymentFormCustomerId(
+        String(customerId)
+      );
+
+      setPaymentFormSignal(
+        (current) => current + 1
+      );
+    } else {
       setPaymentFormCustomerId(null);
+    }
 
-      setCustomerDetailsOpen(false);
-
-      setCustomerDetailsBackSignal(
-        (current) => current + 1
+    if (page === "Payments" && deliveryId) {
+      setPaymentDeliveryId(
+        String(deliveryId)
       );
+    } else {
+      setPaymentDeliveryId(null);
+    }
 
-      setDeliveryResetSignal(
-        (current) => current + 1
-      );
+    setRecentDeliveryId(null);
+    setRecentPaymentId(null);
 
-      setPaymentResetSignal(
-        (current) => current + 1
-      );
+    setCustomerDetailsOpen(false);
 
-      setSidebarOpen(false);
+    setCustomerDetailsBackSignal(
+      (current) => current + 1
+    );
 
-      navigateTo(page);
-    },
-    [navigateTo]
-  );
+    setDeliveryResetSignal(
+      (current) => current + 1
+    );
 
+    setPaymentResetSignal(
+      (current) => current + 1
+    );
+
+    setSidebarOpen(false);
+
+    navigateTo(page);
+  },
+  [navigateTo]
+);
   /* =========================================================
      QUICK NEW DELIVERY
      ========================================================= */
@@ -747,24 +796,31 @@ export default function App() {
               /* ---------------------------------------------
                  5. AQUAFLOW PAGE HISTORY
                  --------------------------------------------- */
+/* -----------------------------------------------
+   4. DASHBOARD → EXIT APP
+   ----------------------------------------------- */
 
-              if (
-                window.history.length >
-                  1 &&
-                activePage !==
-                  "Dashboard"
-              ) {
-                window.history.back();
-                return;
-              }
+if (activePage === "Dashboard") {
+  CapacitorApp.exitApp();
+  return;
+}
 
-              /* ---------------------------------------------
-                 6. DEFAULT ANDROID/BROWSER BACK
-                 --------------------------------------------- */
+/* -----------------------------------------------
+   5. AQUAFLOW NAVIGATION HISTORY
+   ----------------------------------------------- */
 
-              if (canGoBack) {
-                window.history.back();
-              }
+if (window.history.length > 1) {
+  window.history.back();
+  return;
+}
+
+/* -----------------------------------------------
+   6. DEFAULT ANDROID/BROWSER BACK
+   ----------------------------------------------- */
+
+if (canGoBack) {
+  window.history.back();
+}
             }
           );
       };
@@ -843,6 +899,7 @@ export default function App() {
             onFormStateChange={
               setDeliveryFormOpen
             }
+            recentDeliveryId={recentDeliveryId}
           />
         );
 
@@ -862,12 +919,14 @@ export default function App() {
             prefillCustomerId={
               paymentFormCustomerId
             }
+            deliveryId={paymentDeliveryId}
             resetFormSignal={
               paymentResetSignal
             }
             onFormStateChange={
               setPaymentFormOpen
             }
+            recentPaymentId={recentPaymentId}
           />
         );
 

@@ -1,4 +1,3 @@
-
 import {
   useEffect,
   useMemo,
@@ -39,6 +38,7 @@ function Deliveries({
   prefillCustomerId,
   resetFormSignal,
   onFormStateChange,
+  recentDeliveryId,
 }) {
   /* =======================================================
      EMPTY FORM
@@ -61,10 +61,24 @@ function Deliveries({
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(getEmptyForm());
 
-  const formRef = useRef(null);
+  /*
+   * Used when a delivery is created from a customer.
+   * After the data updates, the newest delivery belonging
+   * to that customer will be located and scrolled into view.
+   */
+  const [trackedCustomerId, setTrackedCustomerId] =
+    useState(null);
 
   /* =======================================================
-     REPORT FORM STATE TO PARENT
+     REFS
+     ======================================================= */
+
+  const formRef = useRef(null);
+  const recentDeliveryRef = useRef(null);
+  const deliveryRefs = useRef(new Map());
+
+  /* =======================================================
+     REPORT FORM STATE TO APP
      ======================================================= */
 
   useEffect(() => {
@@ -76,34 +90,102 @@ function Deliveries({
      ======================================================= */
 
   useEffect(() => {
-  if (!showForm) {
-    return undefined;
-  }
+    if (!showForm) {
+      return undefined;
+    }
 
-  const timer = setTimeout(() => {
-    formRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, 100);
+    const timer = setTimeout(() => {
+      formRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
 
-  return () => clearTimeout(timer);
-}, [
-  showForm,
-  editingId,
-  prefillCustomerId,
-  openFormSignal,
-]);
+    return () => clearTimeout(timer);
+  }, [
+    showForm,
+    editingId,
+    prefillCustomerId,
+    openFormSignal,
+  ]);
+
+  /* =======================================================
+     SCROLL TO RECENT DELIVERY
+     ======================================================= */
+
+  useEffect(() => {
+    if (!recentDeliveryId) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      recentDeliveryRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [recentDeliveryId, deliveries]);
+
+  /* =======================================================
+     TRACK CUSTOMER AFTER ADDING DELIVERY
+     ======================================================= */
+
+  useEffect(() => {
+    if (!trackedCustomerId) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      /*
+       * Find the newest delivery for this customer.
+       */
+      const matchingDelivery = [...deliveries]
+        .sort((a, b) => {
+          const aTime = new Date(
+            a.createdAt || a.date || 0
+          ).getTime();
+
+          const bTime = new Date(
+            b.createdAt || b.date || 0
+          ).getTime();
+
+          return bTime - aTime;
+        })
+        .find(
+          (delivery) =>
+            String(delivery.customerId) ===
+            String(trackedCustomerId)
+        );
+
+      if (matchingDelivery) {
+        const element =
+          deliveryRefs.current.get(
+            String(matchingDelivery.id)
+          );
+
+        element?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+
+      setTrackedCustomerId(null);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [deliveries, trackedCustomerId]);
+
   /* =======================================================
      RESET FORM
-     -------------------------------------------------------
-     Used by normal sidebar navigation.
      ======================================================= */
 
   useEffect(() => {
     setShowForm(false);
     setEditingId(null);
     setForm(getEmptyForm());
+    setTrackedCustomerId(null);
   }, [resetFormSignal]);
 
   /* =======================================================
@@ -153,18 +235,22 @@ function Deliveries({
   };
 
   /* =======================================================
-     QUICK-OPEN FORM SIGNAL
+     QUICK OPEN FORM
      ======================================================= */
 
   useEffect(() => {
-    if (!openFormSignal) return;
+    if (!openFormSignal) {
+      return;
+    }
 
     openAdd();
 
-    // openAdd intentionally uses the current
-    // prefillCustomerId value.
+    // The form should react only to the opening signal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openFormSignal, prefillCustomerId]);
+  }, [
+    openFormSignal,
+    prefillCustomerId,
+  ]);
 
   /* =======================================================
      OPEN EDIT FORM
@@ -200,7 +286,10 @@ function Deliveries({
      ======================================================= */
 
   const handleInput = (event) => {
-    const { name, value } = event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
     setForm((current) => ({
       ...current,
@@ -212,7 +301,9 @@ function Deliveries({
      QUANTITY PRESET
      ======================================================= */
 
-  const handleQuantityPreset = (quantity) => {
+  const handleQuantityPreset = (
+    quantity
+  ) => {
     setForm((current) => ({
       ...current,
       quantity: String(quantity),
@@ -226,7 +317,9 @@ function Deliveries({
      QUANTITY INPUT
      ======================================================= */
 
-  const handleQuantityChange = (event) => {
+  const handleQuantityChange = (
+    event
+  ) => {
     setForm((current) => ({
       ...current,
       quantity: event.target.value,
@@ -255,14 +348,20 @@ function Deliveries({
     event.preventDefault();
 
     if (!form.customerId) {
-      alert("Please select a customer.");
+      alert(
+        "Please select a customer."
+      );
       return;
     }
 
-    const quantity = Number(form.quantity);
+    const quantity = Number(
+      form.quantity
+    );
+
     const finalPrice = Number(
       form.finalPrice
     );
+
     const extraCharge =
       Number(form.extraCharge) || 0;
 
@@ -286,20 +385,51 @@ function Deliveries({
       return;
     }
 
+    const customerId =
+      String(form.customerId);
+
     const delivery = {
-      customerId: String(form.customerId),
+      customerId,
       quantity,
       finalPrice,
       extraCharge,
-      date: form.date || today(),
-      notes: form.notes.trim(),
+      date:
+        form.date || today(),
+      notes:
+        form.notes.trim(),
     };
 
+    /* =====================================================
+       UPDATE
+       ===================================================== */
+
     if (editingId) {
-      onUpdate(editingId, delivery);
-    } else {
-      onAdd(delivery);
+      onUpdate(
+        editingId,
+        delivery
+      );
     }
+
+    /* =====================================================
+       CREATE
+       ===================================================== */
+
+    else {
+      onAdd(delivery);
+
+      /*
+       * Remember the customer.
+       * After deliveries updates, the effect above
+       * finds the customer's newest delivery.
+       */
+      setTrackedCustomerId(
+        customerId
+      );
+    }
+
+    /* =====================================================
+       RESET FORM
+       ===================================================== */
 
     setForm(getEmptyForm());
     setEditingId(null);
@@ -310,10 +440,13 @@ function Deliveries({
      DELETE DELIVERY
      ======================================================= */
 
-  const handleDelete = (delivery) => {
-    const confirmed = window.confirm(
-      "Delete this delivery record? Any payments attached to this delivery will also be removed."
-    );
+  const handleDelete = (
+    delivery
+  ) => {
+    const confirmed =
+      window.confirm(
+        "Delete this delivery record? Any payments attached to this delivery will also be removed."
+      );
 
     if (!confirmed) {
       return;
@@ -326,35 +459,53 @@ function Deliveries({
      MARK DELIVERED
      ======================================================= */
 
-  const handleDelivered = (delivery) => {
-    if (delivery.status === "delivered") {
+  const handleDelivered = (
+    delivery
+  ) => {
+    if (
+      delivery.status ===
+      "delivered"
+    ) {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Mark this delivery as delivered?"
-    );
+    const confirmed =
+      window.confirm(
+        "Mark this delivery as delivered?"
+      );
 
     if (!confirmed) {
       return;
     }
 
-    onMarkDelivered(delivery.id);
+    onMarkDelivered(
+      delivery.id
+    );
   };
 
   /* =======================================================
      SORT DELIVERIES
+
+     Newest created delivery first.
      ======================================================= */
 
   const sortedDeliveries = useMemo(() => {
     return [...deliveries].sort(
-      (a, b) =>
-        new Date(
-          b.date || b.createdAt
-        ) -
-        new Date(
-          a.date || a.createdAt
-        )
+      (a, b) => {
+        const aTime = new Date(
+          a.createdAt ||
+            a.date ||
+            0
+        ).getTime();
+
+        const bTime = new Date(
+          b.createdAt ||
+            b.date ||
+            0
+        ).getTime();
+
+        return bTime - aTime;
+      }
     );
   }, [deliveries]);
 
@@ -370,10 +521,13 @@ function Deliveries({
 
       <div className="page-header">
         <div>
-          <h2>Deliveries</h2>
+          <h2>
+            Deliveries
+          </h2>
 
           <p className="welcome">
-            Create and manage water deliveries
+            Create and manage water
+            deliveries
           </p>
         </div>
 
@@ -395,7 +549,9 @@ function Deliveries({
           <span>💧</span>
 
           <div>
-            <small>Total Liters</small>
+            <small>
+              Total Liters
+            </small>
 
             <strong>
               {formatNumber(
@@ -410,7 +566,9 @@ function Deliveries({
           <span>💰</span>
 
           <div>
-            <small>Total Billed</small>
+            <small>
+              Total Billed
+            </small>
 
             <strong>
               Rs.{" "}
@@ -425,7 +583,9 @@ function Deliveries({
           <span>⏳</span>
 
           <div>
-            <small>Pending</small>
+            <small>
+              Pending
+            </small>
 
             <strong>
               {deliveryStats.pending}
@@ -453,8 +613,8 @@ function Deliveries({
               </h3>
 
               <p>
-                Select a customer and enter
-                delivery details.
+                Select a customer and
+                enter delivery details.
               </p>
             </div>
 
@@ -470,36 +630,37 @@ function Deliveries({
           </div>
 
           <div className="form-grid">
-            {/* =================================================
-                CUSTOMER
-                ================================================= */}
+            {/* CUSTOMER */}
 
             <CustomerPicker
               customers={customers}
               value={form.customerId}
               onChange={(value) =>
-                setForm((current) => ({
-                  ...current,
-                  customerId: value,
-                }))
+                setForm(
+                  (current) => ({
+                    ...current,
+                    customerId:
+                      value,
+                  })
+                )
               }
             />
 
-            {/* =================================================
-                QUANTITY
-                ================================================= */}
+            {/* QUANTITY */}
 
             <div className="form-group">
               <label>
-                Quantity of Water (Liters) *
+                Quantity of Water
+                (Liters) *
               </label>
 
               <div className="preset-buttons">
                 <button
                   type="button"
                   className={`preset-button ${
-                    Number(form.quantity) ===
-                    1000
+                    Number(
+                      form.quantity
+                    ) === 1000
                       ? "selected"
                       : ""
                   }`}
@@ -515,8 +676,9 @@ function Deliveries({
                 <button
                   type="button"
                   className={`preset-button ${
-                    Number(form.quantity) ===
-                    2000
+                    Number(
+                      form.quantity
+                    ) === 2000
                       ? "selected"
                       : ""
                   }`}
@@ -535,7 +697,9 @@ function Deliveries({
                 type="number"
                 min="1"
                 step="1"
-                value={form.quantity}
+                value={
+                  form.quantity
+                }
                 onChange={
                   handleQuantityChange
                 }
@@ -543,15 +707,14 @@ function Deliveries({
               />
 
               <small className="input-help">
-                1000 L → Rs. 900. 2000 L →
-                Rs. 1600. You can edit the
+                1000 L → Rs. 900.
+                2000 L → Rs. 1600.
+                You can edit the
                 quantity and price.
               </small>
             </div>
 
-            {/* =================================================
-                FINAL PRICE
-                ================================================= */}
+            {/* FINAL PRICE */}
 
             <div className="form-group">
               <label>
@@ -563,15 +726,17 @@ function Deliveries({
                 type="number"
                 min="0"
                 step="0.01"
-                value={form.finalPrice}
-                onChange={handleInput}
+                value={
+                  form.finalPrice
+                }
+                onChange={
+                  handleInput
+                }
                 placeholder="Final price"
               />
             </div>
 
-            {/* =================================================
-                EXTRA CHARGE
-                ================================================= */}
+            {/* EXTRA CHARGE */}
 
             <div className="form-group">
               <label>
@@ -583,33 +748,37 @@ function Deliveries({
                 type="number"
                 min="0"
                 step="0.01"
-                value={form.extraCharge}
-                onChange={handleInput}
+                value={
+                  form.extraCharge
+                }
+                onChange={
+                  handleInput
+                }
                 placeholder="0"
               />
             </div>
 
-            {/* =================================================
-                DELIVERY DATE
-                ================================================= */}
+            {/* DELIVERY DATE */}
 
             <NepaliDateInput
               value={form.date}
               onChange={(value) =>
-                setForm((current) => ({
-                  ...current,
-                  date: value,
-                }))
+                setForm(
+                  (current) => ({
+                    ...current,
+                    date: value,
+                  })
+                )
               }
               label="Delivery Date"
             />
 
-            {/* =================================================
-                STATUS
-                ================================================= */}
+            {/* STATUS */}
 
             <div className="form-group">
-              <label>Status</label>
+              <label>
+                Status
+              </label>
 
               <div
                 className="selected-customer"
@@ -617,14 +786,20 @@ function Deliveries({
                   minHeight: 48,
                 }}
               >
-                <span>⏳</span>
+                <span>
+                  ⏳
+                </span>
 
                 <strong>
                   {editingId
                     ? deliveries.find(
                         (item) =>
-                          String(item.id) ===
-                          String(editingId)
+                          String(
+                            item.id
+                          ) ===
+                          String(
+                            editingId
+                          )
                       )?.status ===
                       "delivered"
                       ? "Delivered"
@@ -634,36 +809,41 @@ function Deliveries({
               </div>
 
               <small className="input-help">
-                Delivery starts as Pending.
-                Use the Delivered button
-                after the water has been
+                Delivery starts as
+                Pending. Use the
+                Delivered button after
+                the water has been
                 delivered.
               </small>
             </div>
 
-            {/* =================================================
-                NOTES
-                ================================================= */}
+            {/* NOTES */}
 
             <div className="form-group form-group-full">
-              <label>Notes</label>
+              <label>
+                Notes
+              </label>
 
               <textarea
                 name="notes"
-                value={form.notes}
-                onChange={handleInput}
+                value={
+                  form.notes
+                }
+                onChange={
+                  handleInput
+                }
                 placeholder="Optional delivery notes..."
               />
             </div>
           </div>
 
-          {/* =================================================
-              DELIVERY TOTAL
-              ================================================= */}
+          {/* DELIVERY TOTAL */}
 
           <div className="delivery-total-preview">
             <div>
-              <span>Water</span>
+              <span>
+                Water
+              </span>
 
               <strong>
                 {formatNumber(
@@ -674,19 +854,24 @@ function Deliveries({
             </div>
 
             <div>
-              <span>Final Price</span>
+              <span>
+                Final Price
+              </span>
 
               <strong>
                 Rs.{" "}
                 {formatMoney(
-                  Number(form.finalPrice) ||
-                    0
+                  Number(
+                    form.finalPrice
+                  ) || 0
                 )}
               </strong>
             </div>
 
             <div>
-              <span>Extra Charge</span>
+              <span>
+                Extra Charge
+              </span>
 
               <strong>
                 Rs.{" "}
@@ -699,7 +884,9 @@ function Deliveries({
             </div>
 
             <div className="total-highlight">
-              <span>Total</span>
+              <span>
+                Total
+              </span>
 
               <strong>
                 Rs.{" "}
@@ -710,9 +897,7 @@ function Deliveries({
             </div>
           </div>
 
-          {/* =================================================
-              FORM ACTIONS
-              ================================================= */}
+          {/* FORM ACTIONS */}
 
           <div className="form-actions">
             <button
@@ -752,7 +937,8 @@ function Deliveries({
           </h3>
 
           <p>
-            Create your first water delivery.
+            Create your first water
+            delivery.
           </p>
 
           <button
@@ -764,9 +950,9 @@ function Deliveries({
           </button>
         </div>
       ) : (
-        /* ================================================
+        /* =================================================
            DELIVERY LIST
-           ================================================ */
+           ================================================= */
 
         <div className="deliveries-list">
           {sortedDeliveries.map(
@@ -774,7 +960,9 @@ function Deliveries({
               const customer =
                 customers.find(
                   (item) =>
-                    String(item.id) ===
+                    String(
+                      item.id
+                    ) ===
                     String(
                       delivery.customerId
                     )
@@ -791,20 +979,49 @@ function Deliveries({
                   delivery.id
                 );
 
-              const remaining = Math.max(
-                0,
-                total - paid
-              );
+              const remaining =
+                Math.max(
+                  0,
+                  total - paid
+                );
 
               const isDelivered =
                 delivery.status ===
                 "delivered";
 
+              const isRecent =
+                String(
+                  delivery.id
+                ) ===
+                String(
+                  recentDeliveryId
+                );
+
               return (
-                <div
-                  className="delivery-card"
-                  key={delivery.id}
-                >
+              <div
+  className={`delivery-card ${
+    String(delivery.id) === String(recentDeliveryId)
+      ? "recent-delivery"
+      : ""
+  }`}
+  key={delivery.id}
+  ref={(element) => {
+    const id = String(delivery.id);
+
+    if (element) {
+      deliveryRefs.current.set(id, element);
+    } else {
+      deliveryRefs.current.delete(id);
+    }
+
+    if (
+      String(delivery.id) ===
+      String(recentDeliveryId)
+    ) {
+      recentDeliveryRef.current = element;
+    }
+  }}
+>
                   <div className="delivery-main">
                     <div className="delivery-icon">
                       💧
@@ -885,7 +1102,9 @@ function Deliveries({
                   <div className="delivery-right">
                     <strong>
                       Rs.{" "}
-                      {formatMoney(total)}
+                      {formatMoney(
+                        total
+                      )}
                     </strong>
 
                     <small>
@@ -898,6 +1117,8 @@ function Deliveries({
                         marginTop: 8,
                       }}
                     >
+                      {/* DELIVERED */}
+
                       {!isDelivered && (
                         <button
                           type="button"
@@ -917,6 +1138,8 @@ function Deliveries({
                         </button>
                       )}
 
+                      {/* PAYMENT */}
+
                       {remaining > 0 && (
                         <button
                           type="button"
@@ -928,13 +1151,21 @@ function Deliveries({
                           }}
                           onClick={() =>
                             onNavigate(
-                              "Payments"
+                              "Payments",
+                              {
+                                customerId:
+                                  delivery.customerId,
+                                deliveryId:
+                                  delivery.id,
+                              }
                             )
                           }
                         >
                           💰 Payment
                         </button>
                       )}
+
+                      {/* EDIT */}
 
                       <button
                         type="button"
@@ -948,6 +1179,8 @@ function Deliveries({
                       >
                         ✏️
                       </button>
+
+                      {/* DELETE */}
 
                       <button
                         type="button"
