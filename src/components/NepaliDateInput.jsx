@@ -1,32 +1,64 @@
 
-import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  NepaliCalendar,
-} from "@sushill/react-nepali-calendar";
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import "react-day-picker/style.css";
-import "@sushill/react-nepali-calendar/styles.css";
+import {
+  BS_MONTH_NAMES,
+  adToBS,
+  bsToAD,
+  getBSMonthLength,
+} from "@sushill/bikram-sambat";
 
 import { formatNepaliDate } from "../utils/format";
 
-/* =========================================================
-   NEPALI CALENDAR PICKER
+import "../styles/forms.css";
 
-   External value:
+/* =========================================================
+   NEPALI DATE INPUT
+
+   Internal/external value:
      AD YYYY-MM-DD
 
-   Calendar:
-     Bikram Sambat / Nepali
+   Display:
+     Bikram Sambat
 
-   onChange:
-     Returns AD YYYY-MM-DD so existing AquaFlow
-     data and report filtering continue to work.
+   IMPORTANT:
+   We intentionally do NOT use the package's NepaliCalendar
+   component here.
+
+   @sushill/react-nepali-calendar internally renders its own
+   DayButton. That causes the BS day and React Day Picker's
+   child value to appear together:
+
+       1 + 1 = 11
+       2 + 2 = 22
+       3 + 3 = 33
+
+   This component renders the BS calendar grid directly.
    ========================================================= */
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const toJsDate = (value) => {
+const WEEKDAYS = [
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat",
+];
+
+/* =========================================================
+   DATE HELPERS
+   ========================================================= */
+
+function toJsDate(value) {
   if (
     !value ||
     !ISO_DATE_PATTERN.test(String(value))
@@ -34,11 +66,10 @@ const toJsDate = (value) => {
     return undefined;
   }
 
-  const [year, month, day] =
-    String(value)
-      .slice(0, 10)
-      .split("-")
-      .map(Number);
+  const [year, month, day] = String(value)
+    .slice(0, 10)
+    .split("-")
+    .map(Number);
 
   const date = new Date(
     year,
@@ -55,10 +86,10 @@ const toJsDate = (value) => {
   }
 
   return date;
-};
+}
 
-const toIsoDate = (date) => {
-  if (!(date instanceof Date)) {
+function toIsoDate(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
     return "";
   }
 
@@ -73,7 +104,15 @@ const toIsoDate = (date) => {
   ).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
-};
+}
+
+function getTodayBS() {
+  return adToBS(new Date());
+}
+
+/* =========================================================
+   COMPONENT
+   ========================================================= */
 
 function NepaliCalendarPicker({
   value = "",
@@ -91,8 +130,51 @@ function NepaliCalendarPicker({
     [value]
   );
 
+  const selectedBS = useMemo(() => {
+    if (!selectedDate) {
+      return null;
+    }
+
+    return adToBS(selectedDate);
+  }, [selectedDate]);
+
+  const todayBS = useMemo(
+    () => getTodayBS(),
+    []
+  );
+
   /* =======================================================
-     CLOSE WHEN CLICKING OUTSIDE
+     CALENDAR MONTH STATE
+
+     Start from selected date when available.
+     Otherwise use today's Nepali month.
+     ======================================================= */
+
+  const initialBS = selectedBS || todayBS;
+
+  const [calendarYear, setCalendarYear] = useState(
+    initialBS.year
+  );
+
+  const [calendarMonth, setCalendarMonth] = useState(
+    initialBS.month
+  );
+
+  /* =======================================================
+     SYNC CALENDAR WHEN VALUE CHANGES
+     ======================================================= */
+
+  useEffect(() => {
+    if (!selectedBS) {
+      return;
+    }
+
+    setCalendarYear(selectedBS.year);
+    setCalendarMonth(selectedBS.month);
+  }, [value]);
+
+  /* =======================================================
+     CLOSE OUTSIDE
      ======================================================= */
 
   useEffect(() => {
@@ -103,9 +185,7 @@ function NepaliCalendarPicker({
     const handlePointerDown = (event) => {
       if (
         wrapperRef.current &&
-        !wrapperRef.current.contains(
-          event.target
-        )
+        !wrapperRef.current.contains(event.target)
       ) {
         setOpen(false);
       }
@@ -125,7 +205,7 @@ function NepaliCalendarPicker({
   }, [open]);
 
   /* =======================================================
-     CLOSE WITH ESC
+     ESCAPE
      ======================================================= */
 
   useEffect(() => {
@@ -153,23 +233,131 @@ function NepaliCalendarPicker({
   }, [open]);
 
   /* =======================================================
-     DATE SELECTION
+     MONTH INFORMATION
      ======================================================= */
 
-  const handleSelect = (date) => {
-    if (!date) {
+  const monthLength = useMemo(() => {
+    return getBSMonthLength(
+      calendarYear,
+      calendarMonth
+    );
+  }, [calendarYear, calendarMonth]);
+
+  const firstDayAD = useMemo(() => {
+    return bsToAD(
+      calendarYear,
+      calendarMonth,
+      1
+    );
+  }, [calendarYear, calendarMonth]);
+
+  const firstWeekday = firstDayAD.getDay();
+
+  /* =======================================================
+     CALENDAR CELLS
+
+     Only actual BS numbers are rendered.
+
+     There is NO second number.
+     ======================================================= */
+
+  const calendarCells = useMemo(() => {
+    const cells = [];
+
+    /* Empty cells before day 1 */
+    for (let i = 0; i < firstWeekday; i += 1) {
+      cells.push(null);
+    }
+
+    /* Actual Nepali days */
+    for (
+      let day = 1;
+      day <= monthLength;
+      day += 1
+    ) {
+      cells.push(day);
+    }
+
+    /* Complete final week */
+    while (cells.length % 7 !== 0) {
+      cells.push(null);
+    }
+
+    return cells;
+  }, [firstWeekday, monthLength]);
+
+  /* =======================================================
+     NAVIGATION
+     ======================================================= */
+
+  const goPreviousMonth = () => {
+    if (calendarMonth === 1) {
+      setCalendarYear((year) => year - 1);
+      setCalendarMonth(12);
+    } else {
+      setCalendarMonth((month) => month - 1);
+    }
+  };
+
+  const goNextMonth = () => {
+    if (calendarMonth === 12) {
+      setCalendarYear((year) => year + 1);
+      setCalendarMonth(1);
+    } else {
+      setCalendarMonth((month) => month + 1);
+    }
+  };
+
+  /* =======================================================
+     SELECT DAY
+     ======================================================= */
+
+  const handleSelectDay = (day) => {
+    if (!day) {
       return;
     }
 
-    const isoDate = toIsoDate(date);
+    const adDate = bsToAD(
+      calendarYear,
+      calendarMonth,
+      day
+    );
+
+    const isoDate = toIsoDate(adDate);
 
     if (!isoDate) {
       return;
     }
 
     onChange?.(isoDate);
+
     setOpen(false);
   };
+
+  /* =======================================================
+     CHECK SELECTED / TODAY
+     ======================================================= */
+
+  const isSelected = (day) => {
+    return Boolean(
+      selectedBS &&
+      selectedBS.year === calendarYear &&
+      selectedBS.month === calendarMonth &&
+      selectedBS.day === day
+    );
+  };
+
+  const isToday = (day) => {
+    return (
+      todayBS.year === calendarYear &&
+      todayBS.month === calendarMonth &&
+      todayBS.day === day
+    );
+  };
+
+  /* =======================================================
+     RENDER
+     ======================================================= */
 
   return (
     <div
@@ -184,9 +372,16 @@ function NepaliCalendarPicker({
         disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() =>
-          setOpen((current) => !current)
-        }
+        onClick={() => {
+          if (!open) {
+            const current = selectedBS || todayBS;
+
+            setCalendarYear(current.year);
+            setCalendarMonth(current.month);
+          }
+
+          setOpen((current) => !current);
+        }}
       >
         <span className="nepali-calendar-trigger-icon">
           📅
@@ -209,12 +404,97 @@ function NepaliCalendarPicker({
           role="dialog"
           aria-label={`${label} calendar`}
         >
-          <NepaliCalendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={handleSelect}
-            showGregorianDates={false}
-          />
+          <div className="custom-nepali-calendar">
+
+            {/* HEADER */}
+
+            <div className="custom-nepali-calendar-header">
+
+              <button
+                type="button"
+                className="custom-nepali-calendar-nav"
+                onClick={goPreviousMonth}
+                aria-label="Previous Nepali month"
+              >
+                ‹
+              </button>
+
+              <div className="custom-nepali-calendar-title">
+                <strong>
+                  {BS_MONTH_NAMES[calendarMonth - 1]}
+                </strong>
+
+                <span>
+                  {calendarYear} BS
+                </span>
+              </div>
+
+              <button
+                type="button"
+                className="custom-nepali-calendar-nav"
+                onClick={goNextMonth}
+                aria-label="Next Nepali month"
+              >
+                ›
+              </button>
+
+            </div>
+
+            {/* WEEKDAYS */}
+
+            <div className="custom-nepali-calendar-weekdays">
+              {WEEKDAYS.map((weekday) => (
+                <div
+                  key={weekday}
+                  className="custom-nepali-calendar-weekday"
+                >
+                  {weekday}
+                </div>
+              ))}
+            </div>
+
+            {/* DAYS */}
+
+            <div className="custom-nepali-calendar-grid">
+              {calendarCells.map((day, index) => {
+                if (!day) {
+                  return (
+                    <div
+                      key={`empty-${index}`}
+                      className="custom-nepali-calendar-empty"
+                    />
+                  );
+                }
+
+                const selected = isSelected(day);
+                const today = isToday(day);
+
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    className={[
+                      "custom-nepali-calendar-day",
+                      selected
+                        ? "selected"
+                        : "",
+                      today
+                        ? "today"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={() =>
+                      handleSelectDay(day)
+                    }
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+
+          </div>
         </div>
       )}
     </div>
