@@ -1,3 +1,4 @@
+
 import {
   useCallback,
   useEffect,
@@ -25,6 +26,50 @@ import CustomerPicker from "../components/CustomerPicker";
 import NepaliDateInput from "../components/NepaliDateInput";
 
 /* =========================================================
+   PAYMENT METHODS
+   ========================================================= */
+
+const PAYMENT_METHODS = [
+  {
+    value: "cash",
+    label: "Cash",
+    icon: "💵",
+  },
+  {
+    value: "esewa",
+    label: "eSewa",
+    icon: "📱",
+  },
+  {
+    value: "khalti",
+    label: "Khalti",
+    icon: "🟣",
+  },
+  {
+    value: "mobile_banking",
+    label: "Mobile Banking",
+    icon: "🏦",
+  },
+];
+
+/* =========================================================
+   PAYMENT METHOD HELPERS
+   ========================================================= */
+
+const getPaymentMethodInfo = (method) => {
+  const normalized = String(
+    method || "cash"
+  ).toLowerCase();
+
+  return (
+    PAYMENT_METHODS.find(
+      (item) =>
+        item.value === normalized
+    ) || PAYMENT_METHODS[0]
+  );
+};
+
+/* =========================================================
    PAYMENTS
    ========================================================= */
 
@@ -39,6 +84,7 @@ function Payments({
   deliveryId,
   resetFormSignal,
   onFormStateChange,
+  recentPaymentId,
 }) {
   /* =======================================================
      EMPTY FORM
@@ -49,6 +95,8 @@ function Payments({
       customerId: "",
       deliveryId: "",
       amount: "",
+      paymentMethod: "cash",
+      transactionReference: "",
       date: today(),
       notes: "",
     }),
@@ -59,7 +107,8 @@ function Payments({
      STATE
      ======================================================= */
 
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] =
+    useState(false);
 
   const [form, setForm] = useState(
     getEmptyForm
@@ -71,9 +120,14 @@ function Payments({
 
   const formRef = useRef(null);
 
-  const amountInputRef = useRef(null);
+  const amountInputRef =
+    useRef(null);
 
-  const customerPickerRef = useRef(null);
+  const customerPickerRef =
+    useRef(null);
+
+  const recentPaymentRef =
+    useRef(null);
 
   /* =======================================================
      REPORT FORM STATE TO PARENT
@@ -87,6 +141,28 @@ function Payments({
   ]);
 
   /* =======================================================
+     SCROLL TO RECENT PAYMENT
+     ======================================================= */
+
+  useEffect(() => {
+    if (!recentPaymentId) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      recentPaymentRef.current?.scrollIntoView(
+        {
+          behavior: "smooth",
+          block: "center",
+        }
+      );
+    }, 200);
+
+    return () =>
+      clearTimeout(timer);
+  }, [recentPaymentId]);
+
+  /* =======================================================
      SCROLL + SMART FOCUS
      ======================================================= */
 
@@ -95,21 +171,23 @@ function Payments({
       return undefined;
     }
 
-    const scrollTimer = setTimeout(() => {
-      formRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
+    const scrollTimer =
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
 
-    const focusTimer = setTimeout(() => {
-      if (form.customerId) {
-        amountInputRef.current?.focus();
-        amountInputRef.current?.select();
-      } else {
-        customerPickerRef.current?.focus?.();
-      }
-    }, 250);
+    const focusTimer =
+      setTimeout(() => {
+        if (form.customerId) {
+          amountInputRef.current?.focus();
+          amountInputRef.current?.select();
+        } else {
+          customerPickerRef.current?.focus?.();
+        }
+      }, 250);
 
     return () => {
       clearTimeout(scrollTimer);
@@ -150,142 +228,130 @@ function Payments({
          → select customer only
      ======================================================= */
 
-useEffect(() => {
-  if (!openFormSignal) return;
-
-  const customerId = prefillCustomerId
-    ? String(prefillCustomerId)
-    : "";
-
-  const selectedDeliveryId = deliveryId
-    ? String(deliveryId)
-    : "";
-
-  let nextForm = getEmptyForm();
-
-  /*
-   * -------------------------------------------------------
-   * DELIVERY WAS SELECTED
-   *
-   * This is the path:
-   *
-   * Deliveries
-   *    ↓
-   * Payment
-   *
-   * We already know the exact customer AND delivery.
-   * -------------------------------------------------------
-   */
-  if (customerId && selectedDeliveryId) {
-    const delivery = deliveries.find(
-      (item) =>
-        String(item.id) ===
-        selectedDeliveryId
-    );
-
-    if (delivery) {
-      const remaining =
-        getDeliveryRemaining(
-          delivery,
-          payments
-        );
-
-      nextForm = {
-        ...nextForm,
-        customerId,
-        deliveryId: selectedDeliveryId,
-        amount:
-          remaining > 0
-            ? String(remaining)
-            : "",
-      };
-    } else {
-      /*
-       * Delivery no longer exists.
-       * Still keep the customer selected.
-       */
-      nextForm.customerId = customerId;
+  useEffect(() => {
+    if (!openFormSignal) {
+      return;
     }
-  }
 
-  /*
-   * -------------------------------------------------------
-   * CUSTOMER ONLY
-   *
-   * This is the path:
-   *
-   * Customer Details
-   *    ↓
-   * Payment
-   *
-   * If there is exactly one outstanding delivery,
-   * select it automatically.
-   * -------------------------------------------------------
-   */
-  else if (customerId) {
-    const outstanding =
-      deliveries
-        .filter(
-          (delivery) =>
-            String(delivery.customerId) ===
-              customerId &&
-            getDeliveryRemaining(
-              delivery,
-              payments
-            ) > 0
-        )
-        .sort(
-          (a, b) =>
-            new Date(
-              b.date || b.createdAt
-            ) -
-            new Date(
-              a.date || a.createdAt
-            )
-        );
+    const customerId =
+      prefillCustomerId
+        ? String(prefillCustomerId)
+        : "";
 
-    if (outstanding.length === 1) {
+    const selectedDeliveryId =
+      deliveryId
+        ? String(deliveryId)
+        : "";
+
+    let nextForm =
+      getEmptyForm();
+
+    /* -------------------------------------------------------
+       DELIVERY WAS SELECTED
+       ------------------------------------------------------- */
+
+    if (
+      customerId &&
+      selectedDeliveryId
+    ) {
       const delivery =
-        outstanding[0];
-
-      const remaining =
-        getDeliveryRemaining(
-          delivery,
-          payments
+        deliveries.find(
+          (item) =>
+            String(item.id) ===
+            selectedDeliveryId
         );
 
-      nextForm = {
-        ...nextForm,
-        customerId,
-        deliveryId:
-          String(delivery.id),
-        amount:
-          remaining > 0
-            ? String(remaining)
-            : "",
-      };
-    } else {
-      nextForm.customerId =
-        customerId;
+      if (delivery) {
+        const remaining =
+          getDeliveryRemaining(
+            delivery,
+            payments
+          );
+
+        nextForm = {
+          ...nextForm,
+          customerId,
+          deliveryId:
+            selectedDeliveryId,
+          amount:
+            remaining > 0
+              ? String(remaining)
+              : "",
+        };
+      } else {
+        nextForm.customerId =
+          customerId;
+      }
     }
-  }
 
-  /*
-   * -------------------------------------------------------
-   * OPEN PAYMENT FORM
-   * -------------------------------------------------------
-   */
-  setForm(nextForm);
-  setShowForm(true);
+    /* -------------------------------------------------------
+       CUSTOMER ONLY
+       ------------------------------------------------------- */
 
-  // The opening signal controls this effect.
-  // Data changes should not reopen the form.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [
-  openFormSignal,
-  prefillCustomerId,
-  deliveryId,
-]);
+    else if (customerId) {
+      const outstanding =
+        deliveries
+          .filter(
+            (delivery) =>
+              String(
+                delivery.customerId
+              ) === customerId &&
+              getDeliveryRemaining(
+                delivery,
+                payments
+              ) > 0
+          )
+          .sort(
+            (a, b) =>
+              new Date(
+                b.date ||
+                  b.createdAt
+              ) -
+              new Date(
+                a.date ||
+                  a.createdAt
+              )
+          );
+
+      if (
+        outstanding.length ===
+        1
+      ) {
+        const delivery =
+          outstanding[0];
+
+        const remaining =
+          getDeliveryRemaining(
+            delivery,
+            payments
+          );
+
+        nextForm = {
+          ...nextForm,
+          customerId,
+          deliveryId:
+            String(delivery.id),
+          amount:
+            remaining > 0
+              ? String(remaining)
+              : "",
+        };
+      } else {
+        nextForm.customerId =
+          customerId;
+      }
+    }
+
+    setForm(nextForm);
+    setShowForm(true);
+
+    // The opening signal controls this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    openFormSignal,
+    prefillCustomerId,
+    deliveryId,
+  ]);
 
   /* =======================================================
      OUTSTANDING DELIVERIES
@@ -368,7 +434,9 @@ useEffect(() => {
             String(
               delivery.customerId
             ) ===
-            String(form.customerId)
+            String(
+              form.customerId
+            )
         )
         .sort(
           (a, b) =>
@@ -403,7 +471,9 @@ useEffect(() => {
                   String(
                     delivery.customerId
                   ) ===
-                  String(customer.id)
+                  String(
+                    customer.id
+                  )
               )
               .reduce(
                 (
@@ -455,20 +525,24 @@ useEffect(() => {
               )
             : "";
 
-        const deliveryId =
+        const selectedDeliveryId =
           String(
             item.delivery.id
           );
 
         setForm({
           customerId,
-          deliveryId,
+          deliveryId:
+            selectedDeliveryId,
           amount:
             item.remaining > 0
               ? String(
                   item.remaining
                 )
               : "",
+          paymentMethod: "cash",
+          transactionReference:
+            "",
           date: today(),
           notes: "",
         });
@@ -501,11 +575,8 @@ useEffect(() => {
     useCallback((value) => {
       setForm((current) => ({
         ...current,
-
         customerId: value,
-
         deliveryId: "",
-
         amount: "",
       }));
     }, []);
@@ -517,21 +588,22 @@ useEffect(() => {
   const handleDeliveryChange =
     useCallback(
       (event) => {
-        const deliveryId =
+        const selectedDeliveryId =
           event.target.value;
 
         const delivery =
           deliveries.find(
             (item) =>
               String(item.id) ===
-              String(deliveryId)
+              String(
+                selectedDeliveryId
+              )
           );
 
         setForm((current) => ({
           ...current,
-
-          deliveryId,
-
+          deliveryId:
+            selectedDeliveryId,
           amount: delivery
             ? String(
                 getDeliveryRemaining(
@@ -547,6 +619,24 @@ useEffect(() => {
         payments,
       ]
     );
+
+  /* =======================================================
+     PAYMENT METHOD
+     ======================================================= */
+
+  const handlePaymentMethodChange =
+    useCallback((event) => {
+      setForm((current) => ({
+        ...current,
+        paymentMethod:
+          event.target.value,
+        transactionReference:
+          event.target.value ===
+          "cash"
+            ? ""
+            : current.transactionReference,
+      }));
+    }, []);
 
   /* =======================================================
      HANDLE SUBMIT
@@ -568,9 +658,7 @@ useEffect(() => {
       Number(form.amount);
 
     if (
-      !Number.isFinite(
-        amount
-      ) ||
+      !Number.isFinite(amount) ||
       amount <= 0
     ) {
       alert(
@@ -601,8 +689,7 @@ useEffect(() => {
           );
 
         if (
-          amount >
-          remaining
+          amount > remaining
         ) {
           alert(
             `This delivery has only Rs. ${formatMoney(
@@ -614,6 +701,17 @@ useEffect(() => {
         }
       }
     }
+
+    /* -----------------------------------------------------
+       PAYMENT METHOD
+       ----------------------------------------------------- */
+
+    const paymentMethod =
+      form.paymentMethod ||
+      "cash";
+
+    const transactionReference =
+      form.transactionReference.trim();
 
     /* -----------------------------------------------------
        SAVE PAYMENT
@@ -633,6 +731,12 @@ useEffect(() => {
           : null,
 
       amount,
+
+      paymentMethod,
+
+      transactionReference:
+        transactionReference ||
+        "",
 
       date:
         form.date || today(),
@@ -672,11 +776,10 @@ useEffect(() => {
   /* =======================================================
      PAYMENT HISTORY
 
-     IMPORTANT:
-     createdAt contains the exact time the
-     payment was recorded.
+     createdAt contains the exact time
+     the payment was recorded.
 
-     Therefore the newest recorded payment
+     Therefore the newest payment
      appears at the top.
      ======================================================= */
 
@@ -1020,6 +1123,88 @@ useEffect(() => {
             </div>
 
             {/* =============================================
+                PAYMENT METHOD
+                ============================================= */}
+
+            <div className="form-group">
+              <label>
+                Payment Method *
+              </label>
+
+              <select
+                value={
+                  form.paymentMethod ||
+                  "cash"
+                }
+                onChange={
+                  handlePaymentMethodChange
+                }
+              >
+                {PAYMENT_METHODS.map(
+                  (method) => (
+                    <option
+                      key={
+                        method.value
+                      }
+                      value={
+                        method.value
+                      }
+                    >
+                      {method.icon}{" "}
+                      {method.label}
+                    </option>
+                  )
+                )}
+              </select>
+
+              <small className="input-help">
+                Choose how the customer
+                paid.
+              </small>
+            </div>
+
+            {/* =============================================
+                TRANSACTION REFERENCE
+                ============================================= */}
+
+            {form.paymentMethod !==
+              "cash" && (
+              <div className="form-group">
+                <label>
+                  Transaction Reference
+                </label>
+
+                <input
+                  type="text"
+                  value={
+                    form.transactionReference
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setForm(
+                      (current) => ({
+                        ...current,
+
+                        transactionReference:
+                          event
+                            .target
+                            .value,
+                      })
+                    )
+                  }
+                  placeholder="Optional transaction ID"
+                />
+
+                <small className="input-help">
+                  Optional reference for
+                  eSewa, Khalti or Mobile
+                  Banking.
+                </small>
+              </div>
+            )}
+
+            {/* =============================================
                 DATE
                 ============================================= */}
 
@@ -1249,11 +1434,39 @@ useEffect(() => {
                       )
                   );
 
+                const method =
+                  getPaymentMethodInfo(
+                    payment.paymentMethod
+                  );
+
+                const transactionReference =
+                  payment.transactionReference ||
+                  "";
+
                 return (
                   <div
-                    className="customer-card"
+                    className={`customer-card ${
+                      String(
+                        payment.id
+                      ) ===
+                      String(
+                        recentPaymentId
+                      )
+                        ? "recent-payment"
+                        : ""
+                    }`}
                     key={
                       payment.id
+                    }
+                    ref={
+                      String(
+                        payment.id
+                      ) ===
+                      String(
+                        recentPaymentId
+                      )
+                        ? recentPaymentRef
+                        : null
                     }
                   >
                     <div className="customer-avatar">
@@ -1273,6 +1486,11 @@ useEffect(() => {
                           {formatMoney(
                             payment.amount
                           )}
+                        </span>
+
+                        <span>
+                          {method.icon}{" "}
+                          {method.label}
                         </span>
 
                         <span>
@@ -1316,6 +1534,15 @@ useEffect(() => {
                         {!delivery && (
                           <span>
                             General payment
+                          </span>
+                        )}
+
+                        {transactionReference && (
+                          <span>
+                            🔖 Ref:{" "}
+                            {
+                              transactionReference
+                            }
                           </span>
                         )}
 
